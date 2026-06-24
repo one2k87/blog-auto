@@ -1,0 +1,34 @@
+{
+  "count_each": 5,
+  "trends_geo": "KR",
+  "languages": ["ko", "en"],
+
+  "llm": {
+    "provider": "openai",
+    "api_key": "여기에-API-키-입력",
+    "model": "gpt-4o-mini",
+    "_provider_옵션": "openai | anthropic | gemini",
+    "_model_예시": {
+      "openai": "gpt-4o-mini",
+      "anthropic": "claude-3-5-sonnet-20241022",
+      "gemini": "gemini-1.5-flash"
+    }
+  },
+
+  "wordpress": {
+    "enabled": false,
+    "_설명": "enabled=true 면 자동 게시, false 면 복붙용 HTML만 생성",
+    "site_url": "https://your-blog.com",
+    "username": "your_wp_id",
+    "app_password": "abcd efgh ijkl mnop qrst uvwx",
+    "status": "draft",
+    "_status_설명": "draft=임시저장(검토 후 발행), publish=즉시 발행",
+    "category_id": null
+  },
+
+  "sheets": {
+    "enabled": false,
+    "service_account_file": "service_account.json",
+    "spreadsheet_id": "구글시트-URL의-/d/와-/edit-사이-ID"
+  }
+}

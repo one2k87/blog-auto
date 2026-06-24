@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AdSense 자동 블로그</title>
+
+<!-- PWA / 아이폰 홈화면 설치 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="블로그자동화">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
+    --txt:#e7e9ee; --muted:#9aa3b2; --hot:#ff6b4a; --niche:#4aa3ff;
+    --ok:#33c27f; --warn:#f0b429; --accent:#7c5cff; --danger:#ff5a6e;
+    --safe-t:env(safe-area-inset-top); --safe-b:env(safe-area-inset-bottom);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif;
+    padding-bottom:calc(72px + var(--safe-b));}
+  header{position:sticky;top:0;z-index:20;background:rgba(15,17,21,.92);
+    backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--line);
+    padding:calc(12px + var(--safe-t)) 16px 12px;display:flex;align-items:center;gap:12px}
+  h1{font-size:16px;margin:0;font-weight:700;line-height:1.2}
+  .sub{color:var(--muted);font-size:11px;margin-top:2px}
+  .spacer{flex:1}
+  .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);
+    background:var(--card2);color:var(--txt);font-size:17px;display:grid;place-items:center;cursor:pointer}
+  .btn{background:var(--card2);color:var(--txt);border:1px solid var(--line);
+    padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--accent);border-color:var(--accent)}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#06281a}
+  .btn.sm{padding:7px 11px;font-size:12px}
+
+  .filters{display:flex;gap:8px;padding:12px 16px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .filters::-webkit-scrollbar{display:none}
+  .chip{padding:7px 13px;border-radius:20px;border:1px solid var(--line);white-space:nowrap;
+    background:var(--card);cursor:pointer;font-size:13px;color:var(--muted);flex:0 0 auto}
+  .chip.active{color:#fff;border-color:var(--accent);background:#241f3d}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;padding:12px 16px 24px}
+  @media(min-width:760px){.grid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:15px;display:flex;flex-direction:column;gap:9px}
+  .row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+  .b-hot{background:rgba(255,107,74,.15);color:var(--hot)}
+  .b-niche{background:rgba(74,163,255,.15);color:var(--niche)}
+  .b-lang{background:rgba(124,92,255,.15);color:#b3a4ff}
+  .b-ok{background:rgba(51,194,127,.13);color:var(--ok)}
+  .b-wait{background:rgba(240,180,41,.14);color:var(--warn)}
+  .b-err{background:rgba(255,90,110,.15);color:var(--danger)}
+  .kw{font-size:12px;color:var(--muted)}
+  .title{font-size:16px;font-weight:700;line-height:1.4}
+  .meta{font-size:13px;color:var(--muted);line-height:1.55}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--muted);background:var(--card2);padding:3px 8px;border-radius:5px}
+  .links a{color:var(--niche);font-size:12px;text-decoration:none;display:block;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .actions{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+  .preview{display:none;border-top:1px solid var(--line);padding-top:10px;margin-top:2px;
+    max-height:340px;overflow:auto;font-size:13px;line-height:1.65;color:#cdd2db}
+  .preview.open{display:block}
+  .preview h1,.preview h2,.preview h3{color:#fff;font-size:15px;margin:10px 0 6px}
+
+  .empty{padding:48px 24px;text-align:center;color:var(--muted);line-height:1.7}
+  .empty code{background:var(--card2);padding:2px 7px;border-radius:5px;color:#fff}
+
+  /* 설정 시트 */
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none}
+  .sheet-bg.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);
+    border-radius:18px 18px 0 0;border-top:1px solid var(--line);
+    padding:18px 18px calc(22px + var(--safe-b));transform:translateY(100%);
+    transition:.28s;max-height:88vh;overflow:auto}
+  .sheet.open{transform:translateY(0)}
+  .sheet h2{font-size:16px;margin:4px 0 14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  .field input,.field select{width:100%;padding:11px 12px;border-radius:10px;
+    border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:14px}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .divider{height:1px;background:var(--line);margin:16px 0}
+
+  .install-bar{margin:12px 16px 0;padding:12px 14px;background:#241f3d;
+    border:1px solid var(--accent);border-radius:12px;font-size:13px;line-height:1.55;display:none}
+  .install-bar b{color:#b3a4ff}
+
+  .toast{position:fixed;bottom:calc(24px + var(--safe-b));left:50%;transform:translateX(-50%);
+    background:var(--ok);color:#06281a;padding:11px 18px;border-radius:12px;font-weight:700;
+    z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  .toast.err{background:var(--danger);color:#fff}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🚀 자동 블로그</h1>
+    <div class="sub" id="genat">로드 중…</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="reload" title="새로고침">↻</button>
+  <button class="icon-btn" id="gear" title="설정">⚙️</button>
+</header>
+
+<div class="install-bar" id="installBar">
+  📲 <b>홈 화면에 설치</b>하면 앱처럼 쓸 수 있어요. 사파리 하단 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>.
+</div>
+
+<div class="filters">
+  <span class="chip active" data-f="all">전체 <b id="c-all">0</b></span>
+  <span class="chip" data-f="hot">🔥 핫이슈 <b id="c-hot">0</b></span>
+  <span class="chip" data-f="niche">🎯 세분화 <b id="c-niche">0</b></span>
+  <span class="chip" data-l="all" data-on="1">언어:전체</span>
+  <span class="chip" data-l="ko">한국어</span>
+  <span class="chip" data-l="en">EN</span>
+</div>
+
+<div id="grid" class="grid"></div>
+<div id="empty" class="empty" style="display:none"></div>
+
+<!-- 설정 시트 -->
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet">
+  <h2>⚙️ 설정</h2>
+
+  <div class="field">
+    <label>데이터 주소 (latest.json URL)</label>
+    <input id="cfgData" placeholder="https://USER.github.io/REPO/data/latest.json">
+    <div class="hint">클라우드(GitHub Pages 등)에 올린 결과 파일 주소. 비워두면 같은 폴더의 data/latest.json 을 읽습니다.</div>
+  </div>
+
+  <div class="divider"></div>
+  <h2 style="font-size:14px">📝 워드프레스 (폰에서 직접 게시)</h2>
+  <div class="field">
+    <label>사이트 주소</label>
+    <input id="cfgSite" placeholder="https://내블로그.com">
+  </div>
+  <div class="field">
+    <label>아이디</label>
+    <input id="cfgUser" placeholder="wp_id" autocapitalize="off">
+  </div>
+  <div class="field">
+    <label>응용 프로그램 비밀번호</label>
+    <input id="cfgPass" placeholder="abcd efgh ijkl mnop" autocapitalize="off">
+    <div class="hint">워드프레스 관리자 → 사용자 → 프로필 → 응용 프로그램 비밀번호에서 발급.</div>
+  </div>
+  <div class="field">
+    <label>게시 방식</label>
+    <select id="cfgStatus">
+      <option value="draft">임시저장 (검토 후 발행 · 안전)</option>
+      <option value="publish">즉시 발행</option>
+    </select>
+  </div>
+  <div class="hint">입력값은 이 기기에만 저장됩니다(localStorage). 공용 기기에서는 사용에 주의하세요.</div>
+
+  <div class="divider"></div>
+  <div class="actions">
+    <button class="btn primary" id="cfgSave" style="flex:1">저장</button>
+    <button class="btn" id="cfgClose">닫기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LS="adsense_blog_cfg";
+let DATA=null, fKind="all", fLang="all";
+let CFG=loadCfg();
+
+function loadCfg(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return {}}}
+function saveCfg(){localStorage.setItem(LS,JSON.stringify(CFG))}
+
+function toast(m,err){const t=document.getElementById("toast");t.textContent=m;
+  t.className="toast show"+(err?" err":"");setTimeout(()=>t.className="toast",1700);}
+
+const SAMPLE={generated_at:"2026-06-24T07:00:00",auto_publish:false,articles:[
+  {kind:"hot",lang:"ko",keyword:"전기차 보조금 2026",status:"복붙대기",post_url:"",
+   title:"2026년 전기차 보조금 총정리: 차종별 지원금과 신청 방법",
+   meta:"2026년 전기차 국고·지자체 보조금을 차종별로 정리하고 신청 절차까지 안내합니다.",
+   tags:["전기차","보조금","2026","친환경차","신청방법"],
+   links:[{title:"무공해차 통합누리집",url:"https://www.ev.or.kr"}],
+   html:"<h1>2026년 전기차 보조금 총정리</h1><p>2026년 전기차 구매를 고려 중이라면 보조금부터 확인하세요.</p><h2>차종별 지원금</h2><ol><li>국고 보조금</li><li>지자체 보조금</li></ol>"},
+  {kind:"niche",lang:"ko",keyword:"엡손 L3150 드라이버 윈도우11 설치 방법",status:"복붙대기",post_url:"",
+   title:"엡손 L3150 프린터 드라이버, 윈도우11에서 설치하는 가장 쉬운 방법",
+   meta:"엡손 L3150 드라이버가 윈도우11에서 안 잡힐 때 해결 방법을 단계별로 정리했습니다.",
+   tags:["엡손","L3150","프린터드라이버","윈도우11","설치"],
+   links:[{title:"Epson 공식 다운로드",url:"https://www.epson.co.kr/support"}],
+   html:"<h1>엡손 L3150 드라이버 윈도우11 설치</h1><p>드라이버가 자동으로 잡히지 않으면 아래 순서대로 진행하세요.</p><ol><li>공식 사이트 접속</li><li>OS 선택 후 다운로드</li><li>USB 연결 후 설치</li></ol>"}
+]};
+
+function htmlToText(h){const d=document.createElement("div");d.innerHTML=h;return (d.innerText||"").trim();}
+async function clip(t,msg){try{await navigator.clipboard.writeText(t);toast(msg);}
+  catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);
+    ta.select();document.execCommand("copy");ta.remove();toast(msg);}}
+
+function visible(){return (DATA?.articles||[]).filter(a=>
+  (fKind==="all"||a.kind===fKind)&&(fLang==="all"||a.lang===fLang));}
+
+function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
+function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
+function togglePrev(i){document.getElementById("prev-"+i).classList.toggle("open");}
+
+async function publish(i,btn){
+  const a=visible()[i];
+  if(!CFG.site||!CFG.user||!CFG.pass){toast("설정에서 워드프레스 정보를 먼저 입력하세요",1);openSheet();return;}
+  btn.textContent="게시 중…";btn.disabled=true;
+  try{
+    const base=CFG.site.replace(/\/+$/,"");
+    const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
+    const r=await fetch(base+"/wp-json/wp/v2/posts",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":auth},
+      body:JSON.stringify({title:a.title,content:a.html,excerpt:a.meta||"",
+        status:CFG.status||"draft"})});
+    if(r.ok){const d=await r.json();a.status="게시됨";a.post_url=d.link||"";
+      toast("게시 완료 ✓");render();}
+    else{const t=await r.text();console.log(t);toast("게시 실패 "+r.status,1);
+      btn.textContent="게시 재시도";btn.disabled=false;}
+  }catch(e){console.log(e);
+    toast("게시 실패(CORS/네트워크). README의 CORS 안내 참고",1);
+    btn.textContent="게시 재시도";btn.disabled=false;}
+}
+
+function render(){
+  const arts=DATA?.articles||[];
+  c("c-all",arts.length);c("c-hot",arts.filter(a=>a.kind==="hot").length);
+  c("c-niche",arts.filter(a=>a.kind==="niche").length);
+  document.getElementById("genat").textContent=DATA?
+    ("생성 "+new Date(DATA.generated_at).toLocaleString("ko-KR")):"";
+  const list=visible(),grid=document.getElementById("grid"),empty=document.getElementById("empty");
+  if(!list.length){grid.innerHTML="";empty.style.display="block";
+    empty.innerHTML=arts.length?"이 필터에 해당하는 글이 없습니다.":
+      "아직 데이터가 없습니다.<br><br>클라우드 자동화(GitHub Actions)가 매일 7시에<br><code>data/latest.json</code> 을 갱신하면 여기 표시됩니다.<br>설정 ⚙️ 에서 데이터 주소를 넣어보세요.";return;}
+  empty.style.display="none";
+  grid.innerHTML=list.map((a,i)=>{
+    const pub=a.status==="게시됨";
+    const sCls=pub?"b-ok":(a.status==="게시실패"?"b-err":"b-wait");
+    const links=(a.links||[]).map(l=>`<a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.title||l.url}</a>`).join("");
+    return `<div class="card">
+      <div class="row">
+        <span class="badge ${a.kind==="hot"?"b-hot":"b-niche"}">${a.kind==="hot"?"🔥 핫이슈":"🎯 세분화"}</span>
+        <span class="badge b-lang">${a.lang==="ko"?"한국어":"EN"}</span>
+        <span class="badge ${sCls}">${a.status}</span>
+        ${pub&&a.post_url?`<a class="badge b-ok" href="${a.post_url}" target="_blank">글 보기 ↗</a>`:""}
+      </div>
+      <div class="kw">키워드: ${a.keyword}</div>
+      <div class="title">${a.title}</div>
+      <div class="meta">${a.meta||""}</div>
+      <div class="tags">${(a.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join("")}</div>
+      <div class="links">${links}</div>
+      <div class="actions">
+        ${pub?"":`<button class="btn ok sm" onclick="publish(${i},this)">📤 게시</button>`}
+        <button class="btn primary sm" onclick="copyHtml(${i})">📋 HTML</button>
+        <button class="btn sm" onclick="copyText(${i})">텍스트</button>
+        <button class="btn sm" onclick="togglePrev(${i})">미리보기</button>
+      </div>
+      <div class="preview" id="prev-${i}">${a.html}</div>
+    </div>`;}).join("");
+}
+function c(id,v){document.getElementById(id).textContent=v;}
+
+// 필터
+document.querySelectorAll(".chip[data-f]").forEach(ch=>ch.onclick=()=>{
+  document.querySelectorAll(".chip[data-f]").forEach(x=>x.classList.remove("active"));
+  ch.classList.add("active");fKind=ch.dataset.f;render();});
+document.querySelectorAll(".chip[data-l]").forEach(ch=>ch.onclick=()=>{
+  document.querySelectorAll(".chip[data-l]").forEach(x=>x.classList.remove("active"));
+  ch.classList.add("active");fLang=ch.dataset.l;render();});
+
+// 설정 시트
+function openSheet(){
+  document.getElementById("cfgData").value=CFG.dataUrl||"";
+  document.getElementById("cfgSite").value=CFG.site||"";
+  document.getElementById("cfgUser").value=CFG.user||"";
+  document.getElementById("cfgPass").value=CFG.pass||"";
+  document.getElementById("cfgStatus").value=CFG.status||"draft";
+  document.getElementById("sheetBg").classList.add("open");
+  document.getElementById("sheet").classList.add("open");}
+function closeSheet(){document.getElementById("sheetBg").classList.remove("open");
+  document.getElementById("sheet").classList.remove("open");}
+document.getElementById("gear").onclick=openSheet;
+document.getElementById("sheetBg").onclick=closeSheet;
+document.getElementById("cfgClose").onclick=closeSheet;
+document.getElementById("cfgSave").onclick=()=>{
+  CFG.dataUrl=document.getElementById("cfgData").value.trim();
+  CFG.site=document.getElementById("cfgSite").value.trim();
+  CFG.user=document.getElementById("cfgUser").value.trim();
+  CFG.pass=document.getElementById("cfgPass").value.trim();
+  CFG.status=document.getElementById("cfgStatus").value;
+  saveCfg();closeSheet();toast("저장됨 ✓");loadData();};
+document.getElementById("reload").onclick=()=>loadData(true);
+
+// 데이터 로드
+async function loadData(force){
+  const url=(CFG.dataUrl&&CFG.dataUrl.length)?CFG.dataUrl:"./data/latest.json";
+  try{const r=await fetch(url,{cache:force?"reload":"no-store"});
+    if(r.ok){DATA=await r.json();render();return;}}catch(e){}
+  DATA=SAMPLE;render();
+  toast("샘플 표시 중 — 설정에서 데이터 주소를 넣으세요");}
+
+// iOS 설치 안내 (홈화면 미설치 + 사파리일 때만)
+(function(){
+  const standalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+  const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(iOS&&!standalone){document.getElementById("installBar").style.display="block";}
+})();
+
+// 서비스워커 등록
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+
+loadData();
+</script>
+</body>
+</html>

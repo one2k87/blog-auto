@@ -1,0 +1,23 @@
+{
+  "count_each": 5,
+  "trends_geo": "KR",
+  "languages": ["ko", "en"],
+  "llm": {
+    "provider": "openai",
+    "api_key": "여기에-API-키-입력",
+    "model": "gpt-4o-mini"
+  },
+  "wordpress": {
+    "enabled": false,
+    "site_url": "https://your-blog.com",
+    "username": "your_wp_id",
+    "app_password": "abcd efgh ijkl mnop qrst uvwx",
+    "status": "draft",
+    "category_id": null
+  },
+  "sheets": {
+    "enabled": false,
+    "service_account_file": "service_account.json",
+    "spreadsheet_id": ""
+  }
+}
