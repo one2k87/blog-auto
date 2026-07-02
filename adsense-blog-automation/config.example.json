@@ -1,19 +1,60 @@
 {
   "count_each": 5,
-  "trends_geo": "KR",
-  "languages": ["ko", "en"],
+  "_count_설명": "트랙(언어)마다 트렌드 count_each개 + 에버그린 count_each개. 예: 5면 언어당 10개",
 
   "llm": {
-    "provider": "openai",
+    "provider": "gemini",
     "api_key": "여기에-API-키-입력",
-    "model": "gpt-4o-mini",
+    "model": "gemini-2.5-flash",
     "_provider_옵션": "openai | anthropic | gemini",
     "_model_예시": {
       "openai": "gpt-4o-mini",
       "anthropic": "claude-3-5-sonnet-20241022",
-      "gemini": "gemini-1.5-flash"
+      "gemini": "gemini-2.5-flash"
     }
   },
+
+  "_tracks_설명": "언어별 독립 트랙. 각 나라 기준으로 키워드를 따로 산출해 서로 다른 내용의 글 생성",
+  "tracks": [
+    {
+      "lang": "ko",
+      "trends_geo": "KR",
+      "_설명": "한국어=한국 기준. 네이버 검색광고로 실측 월검색량 → 트렌드5 + 에버그린5",
+      "metrics": {
+        "provider": "naver",
+        "low_volume_floor": 100,
+        "low_volume_ceil": 8000,
+        "use_trends_steadiness": true,
+        "naver": {
+          "_안내": "searchad.naver.com > 도구 > API 사용관리에서 발급",
+          "api_key": "액세스라이선스",
+          "secret_key": "비밀키",
+          "customer_id": "고객ID(숫자)"
+        }
+      }
+    },
+    {
+      "lang": "en",
+      "trends_geo": "US",
+      "_설명": "영어=미국 기준. Google Trends 관심도로 순위+꾸준함 → 트렌드5 + 에버그린5",
+      "_google_ads로_정확한_구글검색량_원하면": "provider를 google_ads로 바꾸고 아래 값 채우기",
+      "metrics": {
+        "provider": "trends",
+        "low_volume_floor": 100,
+        "low_volume_ceil": 10000,
+        "use_trends_steadiness": true,
+        "google_ads": {
+          "developer_token": "",
+          "client_id": "",
+          "client_secret": "",
+          "refresh_token": "",
+          "login_customer_id": "숫자(하이픈없이)",
+          "language_id": "1000",
+          "geo_target_id": "2840"
+        }
+      }
+    }
+  ],
 
   "wordpress": {
     "enabled": false,

@@ -58,6 +58,12 @@
   .b-wait{background:rgba(240,180,41,.14);color:var(--warn)}
   .b-err{background:rgba(255,90,110,.15);color:var(--danger)}
   .kw{font-size:12px;color:var(--muted)}
+  .metrics{display:flex;gap:6px;flex-wrap:wrap}
+  .mchip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;
+    background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+  .mchip b{color:var(--txt)}
+  .m-vol b{color:#ffd479}
+  .m-steady b{color:var(--ok)}
   .title{font-size:16px;font-weight:700;line-height:1.4}
   .meta{font-size:13px;color:var(--muted);line-height:1.55}
   .tags{display:flex;gap:6px;flex-wrap:wrap}
@@ -117,8 +123,8 @@
 
 <div class="filters">
   <span class="chip active" data-f="all">전체 <b id="c-all">0</b></span>
-  <span class="chip" data-f="hot">🔥 핫이슈 <b id="c-hot">0</b></span>
-  <span class="chip" data-f="niche">🎯 세분화 <b id="c-niche">0</b></span>
+  <span class="chip" data-f="hot">🔥 높은 경쟁력 <b id="c-hot">0</b></span>
+  <span class="chip" data-f="niche">🎯 낮은 경쟁력 <b id="c-niche">0</b></span>
   <span class="chip" data-l="all" data-on="1">언어:전체</span>
   <span class="chip" data-l="ko">한국어</span>
   <span class="chip" data-l="en">EN</span>
@@ -184,17 +190,33 @@ function toast(m,err){const t=document.getElementById("toast");t.textContent=m;
 
 const SAMPLE={generated_at:"2026-06-24T07:00:00",auto_publish:false,articles:[
   {kind:"hot",lang:"ko",keyword:"전기차 보조금 2026",status:"복붙대기",post_url:"",
+   volume:74000,competition:"높음",
    title:"2026년 전기차 보조금 총정리: 차종별 지원금과 신청 방법",
    meta:"2026년 전기차 국고·지자체 보조금을 차종별로 정리하고 신청 절차까지 안내합니다.",
    tags:["전기차","보조금","2026","친환경차","신청방법"],
    links:[{title:"무공해차 통합누리집",url:"https://www.ev.or.kr"}],
    html:"<h1>2026년 전기차 보조금 총정리</h1><p>2026년 전기차 구매를 고려 중이라면 보조금부터 확인하세요.</p><h2>차종별 지원금</h2><ol><li>국고 보조금</li><li>지자체 보조금</li></ol>"},
   {kind:"niche",lang:"ko",keyword:"엡손 L3150 드라이버 윈도우11 설치 방법",status:"복붙대기",post_url:"",
+   volume:1300,competition:"낮음",steadiness:0.88,
    title:"엡손 L3150 프린터 드라이버, 윈도우11에서 설치하는 가장 쉬운 방법",
    meta:"엡손 L3150 드라이버가 윈도우11에서 안 잡힐 때 해결 방법을 단계별로 정리했습니다.",
    tags:["엡손","L3150","프린터드라이버","윈도우11","설치"],
    links:[{title:"Epson 공식 다운로드",url:"https://www.epson.co.kr/support"}],
-   html:"<h1>엡손 L3150 드라이버 윈도우11 설치</h1><p>드라이버가 자동으로 잡히지 않으면 아래 순서대로 진행하세요.</p><ol><li>공식 사이트 접속</li><li>OS 선택 후 다운로드</li><li>USB 연결 후 설치</li></ol>"}
+   html:"<h1>엡손 L3150 드라이버 윈도우11 설치</h1><p>드라이버가 자동으로 잡히지 않으면 아래 순서대로 진행하세요.</p><ol><li>공식 사이트 접속</li><li>OS 선택 후 다운로드</li><li>USB 연결 후 설치</li></ol>"},
+  {kind:"hot",lang:"en",keyword:"student loan forgiveness 2026",status:"복붙대기",post_url:"",
+   interest:87,competition:"High",
+   title:"Student Loan Forgiveness 2026: Who Qualifies and How to Apply",
+   meta:"A clear 2026 guide to student loan forgiveness in the US — eligibility, deadlines, and the exact steps to apply.",
+   tags:["student loan","forgiveness","2026","how to apply","US"],
+   links:[{title:"Federal Student Aid",url:"https://studentaid.gov"}],
+   html:"<h1>Student Loan Forgiveness 2026</h1><p>If you're a US borrower, start by checking eligibility.</p><h2>Who qualifies</h2><ol><li>Income-driven plans</li><li>PSLF</li></ol>"},
+  {kind:"niche",lang:"en",keyword:"how to install epson l3150 driver on windows 11",status:"복붙대기",post_url:"",
+   volume:2400,competition:"Low",steadiness:0.9,
+   title:"How to Install the Epson L3150 Driver on Windows 11 (Step by Step)",
+   meta:"Epson L3150 not detected on Windows 11? Here is the exact driver install and ink-tank fix, step by step.",
+   tags:["Epson","L3150","printer driver","Windows 11","install"],
+   links:[{title:"Epson support",url:"https://epson.com/support"}],
+   html:"<h1>Install Epson L3150 Driver on Windows 11</h1><p>Follow these steps if the printer isn't detected.</p><ol><li>Open the official site</li><li>Select your OS</li><li>Run the installer</li></ol>"}
 ]};
 
 function htmlToText(h){const d=document.createElement("div");d.innerHTML=h;return (d.innerText||"").trim();}
@@ -204,6 +226,16 @@ async function clip(t,msg){try{await navigator.clipboard.writeText(t);toast(msg)
 
 function visible(){return (DATA?.articles||[]).filter(a=>
   (fKind==="all"||a.kind===fKind)&&(fLang==="all"||a.lang===fLang));}
+
+function fmt(n){return (n||0).toLocaleString();}
+function metricLine(a){
+  const chips=[];
+  if(a.volume!=null) chips.push(`<span class="mchip m-vol">📊 월검색 <b>${fmt(a.volume)}</b></span>`);
+  else if(a.interest!=null) chips.push(`<span class="mchip m-vol">📈 관심도 <b>${a.interest}</b>/100</span>`);
+  if(a.competition) chips.push(`<span class="mchip">경쟁도 <b>${a.competition}</b></span>`);
+  if(a.steadiness!=null) chips.push(`<span class="mchip m-steady">🔁 꾸준함 <b>${Math.round(a.steadiness*100)}%</b></span>`);
+  return chips.length?`<div class="metrics">${chips.join("")}</div>`:"";
+}
 
 function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
 function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
@@ -219,7 +251,7 @@ async function publish(i,btn){
     const r=await fetch(base+"/wp-json/wp/v2/posts",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":auth},
       body:JSON.stringify({title:a.title,content:a.html,excerpt:a.meta||"",
-        status:CFG.status||"draft"})});
+        slug:a.slug||"",status:CFG.status||"draft"})});
     if(r.ok){const d=await r.json();a.status="게시됨";a.post_url=d.link||"";
       toast("게시 완료 ✓");render();}
     else{const t=await r.text();console.log(t);toast("게시 실패 "+r.status,1);
@@ -246,12 +278,13 @@ function render(){
     const links=(a.links||[]).map(l=>`<a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.title||l.url}</a>`).join("");
     return `<div class="card">
       <div class="row">
-        <span class="badge ${a.kind==="hot"?"b-hot":"b-niche"}">${a.kind==="hot"?"🔥 핫이슈":"🎯 세분화"}</span>
+        <span class="badge ${a.kind==="hot"?"b-hot":"b-niche"}">${a.kind==="hot"?"🔥 높은 경쟁력":"🎯 낮은 경쟁력"}</span>
         <span class="badge b-lang">${a.lang==="ko"?"한국어":"EN"}</span>
         <span class="badge ${sCls}">${a.status}</span>
         ${pub&&a.post_url?`<a class="badge b-ok" href="${a.post_url}" target="_blank">글 보기 ↗</a>`:""}
       </div>
-      <div class="kw">키워드: ${a.keyword}</div>
+      <div class="kw">🔑 ${a.focus_keyword||a.keyword}${a.slug?` · /${a.slug}`:""}</div>
+      ${metricLine(a)}
       <div class="title">${a.title}</div>
       <div class="meta">${a.meta||""}</div>
       <div class="tags">${(a.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join("")}</div>

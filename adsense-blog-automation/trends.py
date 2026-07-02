@@ -81,17 +81,52 @@ NICHE_SEED_CATEGORIES = [
 
 
 def build_niche_prompt(count=5, lang="ko"):
-    """LLM에게 초세부 롱테일 주제 count개를 뽑게 하는 프롬프트."""
+    """
+    '낮은 경쟁력(상록성)' 키워드 프롬프트. 언어별로 시장 기준이 다르다.
+      lang="ko" → 한국 시장 기준, 한국어 주제
+      lang="en" → 미국 시장 기준, 영어 주제
+    정의: 검색량은 적지만(경쟁 약함) 계절/유행을 타지 않고 매달 꾸준히 검색되는 상록성 세부 주제.
+    """
     seeds = random.sample(NICHE_SEED_CATEGORIES, k=min(5, len(NICHE_SEED_CATEGORIES)))
+
+    if lang == "en":
+        seeds_text = "\n".join(f"- {s}" for s in seeds)
+        return f"""You are an SEO long-tail keyword strategist for the US market.
+Suggest exactly {count} blog topics that satisfy ALL of the 'low-competition' conditions below.
+
+[Low-competition definition]
+- Low monthly search volume, so competition is weak → a brand-new blog can still rank.
+- BUT the demand is evergreen: searched consistently every month, not tied to a season/trend/event.
+- Very clear searcher intent (mostly 'fix a problem' or 'how to do X').
+
+Good examples: "how to install epson l3150 driver on windows 11", "reset ipad 9th gen without password", "fix error 0x80070643 windows update"
+Avoid (not evergreen): brand-new product launches, tax season, elections — anything that spikes only at a certain time.
+
+[Format rules]
+- Must include a specific identifier (brand/model/version/error code).
+- Phrase as an informational query (install/setup/fix/how to/error).
+- Spread across different domains.
+
+Reference domain seeds (adapt to US market):
+{seeds_text}
+
+Output ONLY {count} topic lines separated by newlines. No numbering, no explanation, no quotes."""
+
     seeds_text = "\n".join(f"- {s}" for s in seeds)
-    return f"""당신은 SEO 롱테일 키워드 전략가입니다.
-검색량은 많지 않지만 의도가 매우 분명하고 경쟁이 약한 '초세부 how-to' 블로그 주제를 정확히 {count}개 추천하세요.
+    return f"""당신은 한국 시장 대상 SEO 롱테일 키워드 전략가입니다.
+아래 '낮은 경쟁력' 조건을 모두 만족하는 한국어 블로그 주제를 정확히 {count}개 추천하세요.
+
+[낮은 경쟁력의 정의]
+- 검색량(월간 조회수)은 적어 경쟁이 약하다. → 신생 블로그도 상위 노출 가능.
+- 그러나 유행·계절·이벤트를 타지 않고 '1년 내내 매달 꾸준히 일정하게' 검색된다(상록성/evergreen).
+- 검색자의 의도가 매우 분명하다(대부분 '문제 해결' 또는 '방법 찾기').
 
 좋은 예시: "엡손 L3150 프린터 드라이버 윈도우11 설치 방법", "아이패드 9세대 화면 분할 끄는 법", "오류 코드 0x80070643 윈도우 업데이트 해결"
+피해야 할 예시(꾸준하지 않음): 특정 신제품 출시·연말정산·선거처럼 특정 시기에만 몰리는 주제.
 
-조건:
-- 특정 브랜드/모델명/버전/오류코드처럼 구체적인 식별자를 반드시 포함
-- 정보성 키워드(설치/설정/해결/방법/오류)로 끝나는 형태
+[형식 조건]
+- 특정 브랜드/모델명/버전/오류코드 같은 구체적 식별자를 반드시 포함
+- 정보성 키워드(설치/설정/해결/방법/오류/사용법)로 끝나는 형태
 - 서로 다른 분야로 분산
 
 참고할 분야 시드:

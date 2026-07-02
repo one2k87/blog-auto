@@ -12,3 +12,10 @@ ddgs>=6.0
 # 구글시트 로깅 (선택)
 gspread>=6.0
 google-auth>=2.30
+
+# 검색량 '꾸준함(상록성)' 측정 (선택, metrics.provider=trends 또는 use_trends_steadiness)
+pytrends>=4.9
+
+# Google Ads 키워드플래너로 구글 실측 검색량 (선택, metrics.provider=google_ads)
+# google-ads>=25.0
+# 네이버 검색광고 API(metrics.provider=naver)는 표준 라이브러리만 사용 → 추가 설치 불필요

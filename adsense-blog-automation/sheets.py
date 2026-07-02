@@ -7,7 +7,8 @@ config에 sheets 설정이 없으면 조용히 건너뛴다.
 
 from datetime import datetime
 
-HEADER = ["날짜", "유형", "언어", "키워드", "제목", "상태", "게시URL", "참고링크"]
+HEADER = ["날짜", "유형", "언어", "키워드", "월검색량", "경쟁도", "꾸준함",
+          "제목", "상태", "게시URL", "참고링크"]
 
 
 def log_rows(articles, sheets_cfg):
@@ -36,9 +37,13 @@ def log_rows(articles, sheets_cfg):
             links = " | ".join(l["url"] for l in a.get("links", []))
             rows.append([
                 today,
-                "핫이슈" if a["kind"] == "hot" else "세분화",
+                "높은경쟁력" if a["kind"] == "hot" else "낮은경쟁력",
                 a["lang"],
                 a["keyword"],
+                (a.get("volume") if a.get("volume") is not None
+                 else (f"관심도 {a.get('interest')}" if a.get("interest") is not None else "미측정")),
+                a.get("competition", ""),
+                a.get("steadiness", ""),
                 a["title"],
                 a.get("status", "생성됨"),
                 a.get("post_url", ""),

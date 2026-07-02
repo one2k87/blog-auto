@@ -52,8 +52,10 @@ def publish_to_wordpress(article, wp_cfg):
         "title": article["title"],
         "content": article["html"],
         "status": wp_cfg.get("status", "draft"),   # 기본 draft = 안전
-        "excerpt": article.get("meta", ""),
+        "excerpt": article.get("meta", ""),         # 메타 설명(검색 스니펫)
     }
+    if article.get("slug"):
+        payload["slug"] = article["slug"]           # SEO 친화 URL
     if tag_ids:
         payload["tags"] = tag_ids
     if wp_cfg.get("category_id"):
