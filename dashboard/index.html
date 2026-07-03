@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AdSense 자동 블로그</title>
+<title>Scripto</title>
 
 <!-- PWA / 아이폰 홈화면 설치 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7c5cff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="블로그자동화">
+<meta name="apple-mobile-web-app-title" content="Scripto">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
 <style>
@@ -123,8 +123,10 @@
 </head>
 <body>
 <header>
+  <img src="icons/icon-192.png" alt="Scripto" width="30" height="30"
+    style="border-radius:8px;flex:0 0 auto">
   <div>
-    <h1>🚀 자동 블로그</h1>
+    <h1>Scripto</h1>
     <div class="sub" id="genat">로드 중…</div>
   </div>
   <div class="spacer"></div>
@@ -249,6 +251,18 @@
   <div class="hint">입력값은 이 기기에만 저장됩니다(localStorage). 공용 기기에서는 사용에 주의하세요.</div>
 
   <div class="divider"></div>
+  <div class="field">
+    <label>🔒 보안 · Face ID 잠금</label>
+    <button class="btn sm" id="faceToggleBtn" style="width:100%">Face ID 잠금 켜기</button>
+    <div class="hint">켜면 앱을 열 때 비밀번호 대신 Face ID로 잠금 해제합니다. (이 아이폰에서만)</div>
+  </div>
+
+  <div class="field">
+    <button class="btn sm" id="updateBtn" style="width:100%">🔄 앱 최신화 (업데이트 안 될 때)</button>
+    <div class="hint">보통은 자동으로 최신화됩니다. 화면이 옛날 그대로면 이 버튼을 누르세요(캐시를 비우고 새로 불러옵니다).</div>
+  </div>
+
+  <div class="divider"></div>
   <div class="actions">
     <button class="btn primary" id="cfgSave" style="flex:1">저장</button>
     <button class="btn" id="cfgClose">닫기</button>
@@ -318,16 +332,29 @@
 <!-- 로그인 오버레이 -->
 <div id="loginOverlay" style="position:fixed;inset:0;z-index:100;background:var(--bg);display:none;
   flex-direction:column;justify-content:center;align-items:center;padding:24px;gap:12px">
-  <div style="font-size:34px">🚀</div>
-  <div style="font-size:20px;font-weight:800">자동 블로그</div>
-  <div style="color:var(--muted);font-size:13px;margin-bottom:6px">로그인</div>
-  <input id="loginUser" placeholder="아이디" autocapitalize="off"
-    style="width:100%;max-width:320px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt)">
-  <input id="loginPass" type="password" placeholder="비밀번호"
-    style="width:100%;max-width:320px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt)">
-  <button class="btn primary" id="loginBtn" style="width:100%;max-width:320px">로그인</button>
-  <button class="btn" id="guestBtn" style="width:100%;max-width:320px">게스트(Basic)로 둘러보기</button>
-  <button class="btn" id="signupBtn" disabled style="width:100%;max-width:320px;opacity:.45">회원가입 (준비 중)</button>
+  <img src="icons/icon-192.png" alt="Scripto" width="84" height="84"
+    style="border-radius:20px;box-shadow:0 8px 24px rgba(124,92,255,.35)">
+  <div style="font-size:22px;font-weight:800;letter-spacing:.5px">Scripto</div>
+
+  <!-- 잠금 모드: Face ID -->
+  <button class="btn primary" id="faceUnlockBtn" style="display:none;width:100%;max-width:320px;font-size:16px;padding:14px">
+    🙂 Face ID로 잠금 해제</button>
+  <button class="btn" id="usePwBtn" style="display:none;width:100%;max-width:320px">비밀번호로 로그인</button>
+
+  <!-- 로그인 모드 -->
+  <div id="pwLogin" style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px">
+    <div style="color:var(--muted);font-size:13px;text-align:center">로그인</div>
+    <input id="loginUser" placeholder="아이디" autocapitalize="off"
+      style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt)">
+    <input id="loginPass" type="password" placeholder="비밀번호"
+      style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt)">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+      <input type="checkbox" id="loginRemember" style="width:auto"> 로그인 정보 기억(자동 로그인)
+    </label>
+    <button class="btn primary" id="loginBtn">로그인</button>
+    <button class="btn" id="guestBtn">게스트(Basic)로 둘러보기</button>
+    <button class="btn" id="signupBtn" disabled style="opacity:.45">회원가입 (준비 중)</button>
+  </div>
   <div id="loginMsg" style="color:var(--danger);font-size:13px;min-height:16px;text-align:center"></div>
 </div>
 
@@ -370,28 +397,90 @@ async function sha256hex(s){
   const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
+let SESSION_UNLOCKED=false;   // 이번 앱 세션에서 Face ID/비번으로 열렸는지
 function isLoggedIn(){ return !!(CFG.auth && CFG.auth.role); }
-function showLogin(show){ const el=document.getElementById("loginOverlay"); if(el) el.style.display=show?"flex":"none"; }
-async function doLogin(){
+function faceReady(){ return !!(window.PublicKeyCredential && CFG.faceEnabled && CFG.faceCredId); }
+function needLock(){ // 로그인돼 있고 Face ID 잠금이 켜져 있으면, 세션 열리기 전엔 잠금
+  return isLoggedIn() && faceReady() && !SESSION_UNLOCKED;
+}
+// base64url <-> ArrayBuffer
+function b2b64u(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function b64u2b(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); const bin=atob(s); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i); return u.buffer; }
+
+function gate(){ // 진입 시 화면 상태 결정
+  const overlay=document.getElementById("loginOverlay");
+  const pw=document.getElementById("pwLogin");
+  const face=document.getElementById("faceUnlockBtn");
+  const usePw=document.getElementById("usePwBtn");
+  if(!isLoggedIn()){                 // 로그인 필요
+    overlay.style.display="flex"; pw.style.display="flex"; face.style.display="none"; usePw.style.display="none";
+    // 기억된 정보 채우기 + 자동 로그인
+    if(CFG.remember){ document.getElementById("loginUser").value=CFG.savedUser||"";
+      document.getElementById("loginPass").value=CFG.savedPass||"";
+      document.getElementById("loginRemember").checked=true;
+      if(CFG.savedUser&&CFG.savedPass) doLogin(true);   // 자동 로그인 시도
+    }
+  } else if(needLock()){             // 로그인됨 + Face ID 잠금
+    overlay.style.display="flex"; pw.style.display="none"; face.style.display="block"; usePw.style.display="block";
+  } else {                          // 바로 입장
+    overlay.style.display="none";
+  }
+}
+function showLogin(show){ if(show) gate(); else document.getElementById("loginOverlay").style.display="none"; }
+
+async function doLogin(silent){
   const u=document.getElementById("loginUser").value.trim();
   const p=document.getElementById("loginPass").value;
   const msg=document.getElementById("loginMsg");
   if(u===ADMIN_USER && (await sha256hex(p))===ADMIN_HASH){
-    CFG.auth={user:u, role:"admin"}; CFG.plan="admin"; saveCfg();
-    msg.textContent=""; showLogin(false); applyPlanUI(); renderCatEditor(); toast("관리자 로그인 ✓");
-  } else {
+    CFG.auth={user:u, role:"admin"}; CFG.plan="admin";
+    // 로그인 정보 기억
+    CFG.remember=document.getElementById("loginRemember").checked;
+    if(CFG.remember){ CFG.savedUser=u; CFG.savedPass=p; } else { delete CFG.savedUser; delete CFG.savedPass; }
+    saveCfg(); SESSION_UNLOCKED=true;
+    msg.textContent=""; document.getElementById("loginOverlay").style.display="none";
+    applyPlanUI(); renderCatEditor(); if(!silent) toast("관리자 로그인 ✓");
+  } else if(!silent){
     msg.textContent="아이디 또는 비밀번호가 올바르지 않습니다.";
   }
 }
 function loginGuest(){
-  CFG.auth={user:"guest", role:"guest"};
-  if(CFG.plan==="admin") CFG.plan="basic";   // 관리자 아니면 basic
-  saveCfg(); showLogin(false); applyPlanUI();
+  CFG.auth={user:"guest", role:"guest"}; if(CFG.plan==="admin") CFG.plan="basic";
+  saveCfg(); SESSION_UNLOCKED=true; document.getElementById("loginOverlay").style.display="none"; applyPlanUI();
 }
 function logout(){
-  delete CFG.auth; if(CFG.plan==="admin") CFG.plan="basic"; saveCfg();
-  showLogin(true); toast("로그아웃 됨");
+  delete CFG.auth; if(CFG.plan==="admin") CFG.plan="basic"; SESSION_UNLOCKED=false; saveCfg();
+  gate(); toast("로그아웃 됨");
 }
+
+// ---- Face ID (WebAuthn 플랫폼 인증) ----
+async function registerFaceId(){
+  if(!window.PublicKeyCredential){ toast("이 기기는 Face ID(WebAuthn) 미지원",1); return; }
+  if(!isLoggedIn()){ toast("먼저 로그인하세요",1); return; }
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      rp:{name:"Scripto", id:location.hostname},
+      user:{id:crypto.getRandomValues(new Uint8Array(16)), name:CFG.auth.user||"user", displayName:CFG.auth.user||"user"},
+      pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:"platform", userVerification:"required", residentKey:"preferred"},
+      timeout:60000, attestation:"none"
+    }});
+    CFG.faceCredId=b2b64u(cred.rawId); CFG.faceEnabled=true; saveCfg();
+    toast("Face ID 잠금 설정 완료 ✓"); applyPlanUI();
+  }catch(e){ console.log("faceReg",e); toast("Face ID 설정 취소/실패",1); }
+}
+async function faceUnlock(){
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:"public-key", id:b64u2b(CFG.faceCredId)}],
+      userVerification:"required", timeout:60000, rpId:location.hostname
+    }});
+    SESSION_UNLOCKED=true; document.getElementById("loginOverlay").style.display="none";
+  }catch(e){ console.log("faceUnlock",e); toast("잠금 해제 실패 — 비밀번호로 시도하세요",1); }
+}
+function disableFaceId(){ CFG.faceEnabled=false; delete CFG.faceCredId; saveCfg(); toast("Face ID 잠금 해제됨"); applyPlanUI(); }
 
 async function verifyLicense(key){
   key = (key||"").trim();
@@ -622,7 +711,7 @@ document.getElementById("licVerify").onclick=async()=>{
 
 function openSheet(){
   document.getElementById("cfgLicense").value=CFG.license||"";
-  applyPlanUI(); renderCatEditor();
+  applyPlanUI(); renderCatEditor(); refreshFaceBtn();
   document.getElementById("cfgData").value=CFG.dataUrl||"";
   document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
   document.getElementById("cfgGhRepo").value=CFG.ghRepo||"";
@@ -640,6 +729,13 @@ document.getElementById("gear").onclick=openSheet;
 document.getElementById("sheetBg").onclick=closeSheet;
 document.getElementById("cfgClose").onclick=closeSheet;
 document.getElementById("logoutBtn").onclick=()=>{closeSheet();logout();};
+document.getElementById("updateBtn").onclick=()=>{toast("최신 버전 불러오는 중…");forceUpdate();};
+document.getElementById("faceToggleBtn").onclick=()=>{ CFG.faceEnabled?disableFaceId():registerFaceId(); };
+function refreshFaceBtn(){
+  const b=document.getElementById("faceToggleBtn"); if(!b)return;
+  if(!window.PublicKeyCredential){ b.textContent="이 기기는 Face ID 미지원"; b.disabled=true; return; }
+  b.disabled=false; b.textContent=CFG.faceEnabled?"Face ID 잠금 끄기":"Face ID 잠금 켜기";
+}
 document.getElementById("cfgSave").onclick=()=>{
   CFG.dataUrl=document.getElementById("cfgData").value.trim();
   CFG.ghOwner=document.getElementById("cfgGhOwner").value.trim();
@@ -852,17 +948,55 @@ async function loadData(force){
   if(iOS&&!standalone){document.getElementById("installBar").style.display="block";}
 })();
 
-// 서비스워커 등록
+// 서비스워커 등록 + 자동 업데이트 (앞으로 앱을 다시 안 만들어도 최신이 반영됨)
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  let _reloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(_reloaded)return; _reloaded=true; location.reload();   // 새 버전 활성화 시 자동 새로고침
+  });
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").then(reg=>{
+      reg.update();
+      // 대기 중인 새 버전이 있으면 즉시 적용
+      if(reg.waiting) reg.waiting.postMessage("SKIP_WAITING");
+      reg.addEventListener("updatefound",()=>{
+        const nw=reg.installing;
+        nw && nw.addEventListener("statechange",()=>{
+          if(nw.state==="installed" && navigator.serviceWorker.controller) nw.postMessage("SKIP_WAITING");
+        });
+      });
+      setInterval(()=>reg.update(), 30*60*1000); // 30분마다 업데이트 확인
+    }).catch(()=>{});
+  });
+  // 앱이 다시 포그라운드로 올 때도 업데이트 확인
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden) navigator.serviceWorker.getRegistration().then(r=>r&&r.update());
+  });
+}
+
+// 설정의 '앱 최신화' — 캐시를 비우고 강제로 최신 버전 로드(문제 있을 때 수동 버튼)
+async function forceUpdate(){
+  try{
+    const regs=await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){ await r.update(); if(r.waiting) r.waiting.postMessage("SKIP_WAITING"); }
+    if(window.caches){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }
+  }catch(e){}
+  location.reload();
 }
 
 // 로그인 버튼 연결 + 진입 시 게이트
-document.getElementById("loginBtn").onclick=doLogin;
+document.getElementById("loginBtn").onclick=()=>doLogin();
 document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
 document.getElementById("guestBtn").onclick=loginGuest;
 document.getElementById("signupBtn").onclick=()=>toast("회원가입은 준비 중입니다");
-showLogin(!isLoggedIn());
+document.getElementById("faceUnlockBtn").onclick=faceUnlock;
+document.getElementById("usePwBtn").onclick=()=>{
+  document.getElementById("pwLogin").style.display="flex";
+  document.getElementById("faceUnlockBtn").style.display="none";
+  document.getElementById("usePwBtn").style.display="none";
+};
+gate();
+if(needLock()) faceUnlock();   // 잠금 상태면 진입하자마자 Face ID 시도
 
 applyPlanUI();
 loadData();
