@@ -1,7 +1,8 @@
-// 서비스워커 - 아이폰 홈화면 설치(PWA) 및 오프라인 캐시
-const CACHE = "adsense-blog-v1";
+// 서비스워커 - 아이폰 홈화면 설치(PWA)
+// v3: 앱 화면(HTML/JS)과 데이터(JSON)는 '항상 최신 우선'으로 받아,
+//     업데이트가 즉시 반영되도록 함(예전엔 캐시가 옛 화면을 붙잡던 문제 수정).
+const CACHE = "adsense-blog-v3";
 const ASSETS = [
-  "./index.html",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -22,8 +23,12 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  // latest.json 같은 데이터는 항상 네트워크 우선(최신 글 받기), 실패 시 캐시
-  if (url.pathname.endsWith(".json")) {
+  const isDoc = e.request.mode === "navigate" ||
+                url.pathname.endsWith("/") || url.pathname.endsWith(".html");
+  const isJson = url.pathname.endsWith(".json");
+
+  // 화면(HTML)과 데이터(JSON)는 네트워크 우선 → 새로 올린 버전/글이 바로 보임
+  if (isDoc || isJson) {
     e.respondWith(
       fetch(e.request).then((r) => {
         const copy = r.clone();
@@ -33,6 +38,6 @@ self.addEventListener("fetch", (e) => {
     );
     return;
   }
-  // 앱 자원은 캐시 우선(오프라인에서도 열림)
+  // 아이콘 등 정적 자원만 캐시 우선(오프라인에서도 아이콘 표시)
   e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
 });
