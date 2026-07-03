@@ -71,7 +71,7 @@ cfg = {
         "provider": envs("METRICS_PROVIDER", "naver"),
         "low_volume_floor": envi("LOW_VOLUME_FLOOR", 100),
         "low_volume_ceil": envi("LOW_VOLUME_CEIL", 8000),
-        "use_trends_steadiness": b("USE_TRENDS_STEADINESS", True),
+        "use_trends_steadiness": b("USE_TRENDS_STEADINESS", False),
         "naver": {
             "api_key": envs("NAVER_API_KEY", ""),
             "secret_key": envs("NAVER_SECRET_KEY", ""),
@@ -86,6 +86,10 @@ cfg = {
         "status": envs("WP_STATUS", "draft"),
     },
     "sheets": {"enabled": False},
+    "perf": {
+        "workers": envi("WORKERS", 3),      # 슬롯 병렬 생성(이미지·글 대기시간 겹치기)
+        "classify": b("CLASSIFY", True),    # false 면 판별 LLM 호출 생략(무료 등급 속도↑)
+    },
 }
 
 with open("config.json", "w", encoding="utf-8") as f:
