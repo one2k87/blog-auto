@@ -41,6 +41,36 @@ def upload_media(image_path, wp_cfg, alt=""):
     return None
 
 
+def ensure_category(base_url, headers, name, slug=None):
+    """WP 카테고리 이름 → ID(없으면 생성). slug 지정 시 영문 주소(/category/slug/)로 만든다."""
+    if not name:
+        return None
+    try:
+        # 슬러그로 먼저 조회(있으면 그대로 사용)
+        if slug:
+            r = requests.get(f"{base_url}/wp-json/wp/v2/categories",
+                             params={"slug": slug}, headers=headers, timeout=20)
+            if isinstance(r.json(), list) and r.json():
+                return r.json()[0]["id"]
+        # 이름으로 조회
+        r = requests.get(f"{base_url}/wp-json/wp/v2/categories",
+                         params={"search": name}, headers=headers, timeout=20)
+        found = next((c for c in r.json() if c.get("name", "").strip() == name.strip()), None)
+        if found:
+            return found["id"]
+        # 생성 (slug 포함)
+        payload = {"name": name}
+        if slug:
+            payload["slug"] = slug
+        c = requests.post(f"{base_url}/wp-json/wp/v2/categories",
+                          json=payload, headers=headers, timeout=20)
+        if c.status_code in (200, 201):
+            return c.json()["id"]
+    except Exception as e:
+        print(f"[wp] 카테고리 처리 실패('{name}'): {e}")
+    return None
+
+
 def ensure_tags(base_url, headers, tag_names):
     """태그 이름 목록을 태그 ID 목록으로 변환(없으면 생성)."""
     ids = []
@@ -85,7 +115,13 @@ def publish_to_wordpress(article, wp_cfg):
         payload["slug"] = article["slug"]           # SEO 친화 URL
     if tag_ids:
         payload["tags"] = tag_ids
-    if wp_cfg.get("category_id"):
+    # 글의 카테고리를 WP 카테고리(영문 슬러그 주소)로 매핑해 나눠 게시
+    wp_cat_name = article.get("wp_category") or article.get("category")
+    wp_cat_slug = article.get("wp_category_slug")
+    cat_id = ensure_category(base_url, headers, wp_cat_name, wp_cat_slug) if wp_cat_name else None
+    if cat_id:
+        payload["categories"] = [cat_id]
+    elif wp_cfg.get("category_id"):
         payload["categories"] = [wp_cfg["category_id"]]
 
     try:
