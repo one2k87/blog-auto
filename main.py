@@ -197,7 +197,10 @@ def _run_category(cfg, cat, hist, auto_publish):
         print(f"  · 주제:", [t["keyword"] for t in got])
         exclude += [t["keyword"] for t in got]
 
-    out = []
+    # 슬롯 → 작업 목록 구성(주제 배정). 내부링크는 과거 글 기준(병렬 안전).
+    related = [{"title": r["title"], "slug": r.get("slug", ""),
+                "url": r.get("post_url") or r.get("url", "")} for r in related_pool[:3]]
+    jobs = []
     slot_count = {"long": 0, "season": 0}
     for lane, mode, n_parts in slots:
         q = topic_q.get(lane, [])
@@ -206,9 +209,11 @@ def _run_category(cfg, cat, hist, auto_publish):
         kw = q.pop(0)
         if not kw["keyword"]:
             continue
-        related = [{"title": r["title"], "slug": r.get("slug", ""),
-                    "url": r.get("post_url") or r.get("url", "")}
-                   for r in (out[-2:] + related_pool)[:3]]
+        slot_count[lane] += 1
+        jobs.append((lane, mode, n_parts, kw))
+
+    def gen_job(job):
+        lane, mode, n_parts, kw = job
         try:
             if mode == "series":
                 print(f"-> [시리즈 {n_parts}편][{lane}] {kw['keyword']}")
@@ -222,8 +227,7 @@ def _run_category(cfg, cat, hist, auto_publish):
                                         insert_ads=insert_ads, image_resolver=resolver)
         except Exception as e:
             print(f"[오류] '{kw['keyword']}' 글 생성 실패(건너뜀): {e}")
-            continue
-        slot_count[lane] += 1
+            return []
         for a in arts:
             a["category"] = name
             a["wp_category"] = cat.get("wp_category", name)
@@ -232,15 +236,31 @@ def _run_category(cfg, cat, hist, auto_publish):
             a["steadiness"] = kw.get("steadiness")
             a["interest"] = kw.get("interest")
             a["lane_reason"] = kw.get("lane_reason", "")
-            if auto_publish:
-                url = publish_to_wordpress(a, wp_cfg)
-                a["status"] = "게시됨" if url else "게시실패"
-                a["post_url"] = url or ""
-            else:
-                a["status"] = "복붙대기"
-                a["post_url"] = ""
-            a["copy_file"] = save_copy_html(a)
-            out.append(a)
+        return arts
+
+    # 생성은 병렬(이미지·글 대기시간 겹치기), 게시/저장은 순차(WP 안정)
+    workers = max(1, int(cfg.get("perf", {}).get("workers", 3)))
+    generated = []
+    if workers > 1 and len(jobs) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for arts in ex.map(gen_job, jobs):
+                generated += arts
+    else:
+        for job in jobs:
+            generated += gen_job(job)
+
+    out = []
+    for a in generated:
+        if auto_publish:
+            url = publish_to_wordpress(a, wp_cfg)
+            a["status"] = "게시됨" if url else "게시실패"
+            a["post_url"] = url or ""
+        else:
+            a["status"] = "복붙대기"
+            a["post_url"] = ""
+        a["copy_file"] = save_copy_html(a)
+        out.append(a)
     print(f"  → [{name}] 슬롯 {sum(slot_count.values())}건 · 글 {len(out)}편")
     return out
 
