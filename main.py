@@ -62,10 +62,11 @@ def get_categories(cfg):
     """config에서 카테고리 목록을 만든다(구버전 site.category 호환)."""
     if cfg.get("categories"):
         return [{"name": c.get("name", ""), "desc": c.get("desc", ""),
-                 "wp_category": c.get("wp_category", c.get("name", ""))} for c in cfg["categories"]]
+                 "wp_category": c.get("wp_category", c.get("name", "")),
+                 "wp_slug": c.get("wp_slug", "")} for c in cfg["categories"]]
     site = cfg.get("site", {})
     return [{"name": site.get("category", ""), "desc": site.get("category_desc", ""),
-             "wp_category": site.get("category", "")}]
+             "wp_category": site.get("category", ""), "wp_slug": ""}]
 
 
 def collect_lane(cfg, cat, lane, n_slots, exclude):
@@ -241,6 +242,7 @@ def _run_category(cfg, cat, hist, auto_publish, img_budget=None):
         for a in arts:
             a["category"] = name
             a["wp_category"] = cat.get("wp_category", name)
+            a["wp_category_slug"] = cat.get("wp_slug", "")
             a["volume"] = kw.get("volume")
             a["competition"] = kw.get("competition", "")
             a["steadiness"] = kw.get("steadiness")
