@@ -32,6 +32,17 @@
   .spacer{flex:1}
   .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);
     background:var(--card2);color:var(--txt);font-size:17px;display:grid;place-items:center;cursor:pointer}
+  .run-wrap{position:relative;width:38px;height:38px;flex:0 0 auto}
+  .run-ring{position:absolute;inset:-3px;width:44px;height:44px;transform:rotate(-90deg);
+    pointer-events:none;opacity:0;transition:opacity .2s}
+  .run-wrap.running .run-ring{opacity:1}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:3}
+  .ring-fg{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;
+    stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .5s ease}
+  .run-wrap.running #runBtn{border-color:var(--accent);background:var(--accent)}
+  .run-pct{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);
+    font-size:9px;font-weight:700;color:var(--accent);white-space:nowrap;display:none}
+  .run-wrap.running .run-pct{display:block}
   .btn{background:var(--card2);color:var(--txt);border:1px solid var(--line);
     padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600}
   .btn:active{transform:scale(.97)}
@@ -115,7 +126,15 @@
     <div class="sub" id="genat">로드 중…</div>
   </div>
   <div class="spacer"></div>
-  <button class="icon-btn" id="runBtn" title="지금 생성 실행">▶</button>
+  <button class="icon-btn" id="statsBtn" title="조회·수익">📊</button>
+  <div class="run-wrap" id="runWrap" title="지금 생성 실행">
+    <svg class="run-ring" viewBox="0 0 44 44" aria-hidden="true">
+      <circle class="ring-bg" cx="22" cy="22" r="19"></circle>
+      <circle class="ring-fg" id="ringFg" cx="22" cy="22" r="19"></circle>
+    </svg>
+    <button class="icon-btn" id="runBtn">▶</button>
+    <span class="run-pct" id="runPct"></span>
+  </div>
   <button class="icon-btn" id="reload" title="새로고침">↻</button>
   <button class="icon-btn" id="gear" title="설정">⚙️</button>
 </header>
@@ -161,6 +180,12 @@
     <div class="hint">github.com → Settings → Developer settings → Fine-grained tokens.
       이 저장소의 Actions(Read/Write) 권한만 주세요. 이 기기에만 저장됩니다.</div>
   </div>
+  <div class="field">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="cfgGenImages" style="width:auto"> 이 실행에서 이미지도 함께 생성
+    </label>
+    <div class="hint">체크 해제하면 ▶ 실행 시 이미지 없이 글만 생성합니다(비용/시간 절약).</div>
+  </div>
 
   <div class="divider"></div>
   <h2 style="font-size:14px">📝 워드프레스 (폰에서 직접 게시)</h2>
@@ -190,6 +215,54 @@
   <div class="actions">
     <button class="btn primary" id="cfgSave" style="flex:1">저장</button>
     <button class="btn" id="cfgClose">닫기</button>
+  </div>
+</div>
+
+<!-- 조회·수익 시트 -->
+<div class="sheet-bg" id="statsBg"></div>
+<div class="sheet" id="statsSheet">
+  <h2>📊 조회·애드센스 예상 수익</h2>
+  <div id="statsSummary" style="margin-bottom:12px"></div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <a class="btn sm" id="lnkAdsense" href="https://adsense.google.com/adsense/home" target="_blank" rel="noopener">💰 애드센스 열기</a>
+    <a class="btn sm" id="lnkGa" href="https://analytics.google.com" target="_blank" rel="noopener">📈 애널리틱스</a>
+    <a class="btn sm" id="lnkWp" href="#" target="_blank" rel="noopener">🌐 워드프레스 통계</a>
+  </div>
+
+  <h2 style="font-size:14px">가정값 입력</h2>
+  <div class="field">
+    <label>글당 월 평균 조회수</label>
+    <input id="stViews" type="number" inputmode="numeric" placeholder="예: 300">
+    <div class="hint">글 1개가 한 달에 평균 몇 번 조회되는지(감으로 시작해도 됩니다).</div>
+  </div>
+  <div class="field">
+    <label>RPM · 1,000회 조회당 수익 (원)</label>
+    <input id="stRpm" type="number" inputmode="numeric" placeholder="예: 5000">
+    <div class="hint">금융 등 고단가는 보통 높음. AdSense 실제 RPM을 알면 그 값을 넣으세요.</div>
+  </div>
+  <div class="field">
+    <label>실제 월 조회수 (선택 · 알면 입력)</label>
+    <input id="stRealViews" type="number" inputmode="numeric" placeholder="비우면 위 가정으로 계산">
+  </div>
+  <div class="field">
+    <label>실제 월 수익 (선택 · AdSense 확인값)</label>
+    <input id="stRealRev" type="number" inputmode="numeric" placeholder="비우면 예상값 사용">
+  </div>
+
+  <div class="field">
+    <button class="btn sm" id="stWpCount">WordPress 실제 발행 글 수 불러오기</button>
+    <div class="hint" id="stWpHint">설정에 워드프레스 정보가 있으면 실제 발행 수를 가져옵니다.</div>
+  </div>
+
+  <div id="statsResult" style="margin:10px 0"></div>
+
+  <div class="hint">※ 예상치는 입력한 가정에 따른 계산값입니다. <b>정확한 실제 조회수·수익은 위 애드센스/애널리틱스
+    버튼</b>을 눌러 확인하세요. 확인한 값을 위 '실제' 칸에 넣으면 이 화면이 정확한 값으로 바뀝니다.</div>
+  <div class="divider"></div>
+  <div class="actions">
+    <button class="btn primary" id="stSave" style="flex:1">저장 & 계산</button>
+    <button class="btn" id="stClose">닫기</button>
   </div>
 </div>
 
@@ -261,6 +334,17 @@ function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
 function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
 function togglePrev(i){document.getElementById("prev-"+i).classList.toggle("open");}
 
+async function wpCategoryId(base,auth,name){
+  try{
+    let r=await fetch(base+"/wp-json/wp/v2/categories?search="+encodeURIComponent(name),{headers:{Authorization:auth}});
+    let list=await r.json(); let f=Array.isArray(list)?list.find(c=>c.name===name):null;
+    if(f)return f.id;
+    let c=await fetch(base+"/wp-json/wp/v2/categories",{method:"POST",
+      headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify({name})});
+    if(c.ok)return (await c.json()).id;
+  }catch(e){console.log("cat",e);}
+  return null;
+}
 async function publish(i,btn){
   const a=visible()[i];
   if(!CFG.site||!CFG.user||!CFG.pass){toast("설정에서 워드프레스 정보를 먼저 입력하세요",1);openSheet();return;}
@@ -268,10 +352,13 @@ async function publish(i,btn){
   try{
     const base=CFG.site.replace(/\/+$/,"");
     const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
+    const catName=a.wp_category||a.category||"";
+    const catId=catName?await wpCategoryId(base,auth,catName):null;  // 카테고리별 주소로
+    const body={title:a.title,content:a.html,excerpt:a.meta||"",slug:a.slug||"",status:CFG.status||"draft"};
+    if(catId)body.categories=[catId];
     const r=await fetch(base+"/wp-json/wp/v2/posts",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":auth},
-      body:JSON.stringify({title:a.title,content:a.html,excerpt:a.meta||"",
-        slug:a.slug||"",status:CFG.status||"draft"})});
+      body:JSON.stringify(body)});
     if(r.ok){const d=await r.json();a.status="게시됨";a.post_url=d.link||"";
       toast("게시 완료 ✓");render();}
     else{const t=await r.text();console.log(t);toast("게시 실패 "+r.status,1);
@@ -335,6 +422,7 @@ function openSheet(){
   document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
   document.getElementById("cfgGhRepo").value=CFG.ghRepo||"";
   document.getElementById("cfgGhToken").value=CFG.ghToken||"";
+  document.getElementById("cfgGenImages").checked=(CFG.genImages!==false);
   document.getElementById("cfgSite").value=CFG.site||"";
   document.getElementById("cfgUser").value=CFG.user||"";
   document.getElementById("cfgPass").value=CFG.pass||"";
@@ -351,6 +439,7 @@ document.getElementById("cfgSave").onclick=()=>{
   CFG.ghOwner=document.getElementById("cfgGhOwner").value.trim();
   CFG.ghRepo=document.getElementById("cfgGhRepo").value.trim();
   CFG.ghToken=document.getElementById("cfgGhToken").value.trim();
+  CFG.genImages=document.getElementById("cfgGenImages").checked;
   CFG.site=document.getElementById("cfgSite").value.trim();
   CFG.user=document.getElementById("cfgUser").value.trim();
   CFG.pass=document.getElementById("cfgPass").value.trim();
@@ -358,22 +447,165 @@ document.getElementById("cfgSave").onclick=()=>{
   saveCfg();closeSheet();toast("저장됨 ✓");loadData();};
 document.getElementById("reload").onclick=()=>loadData(true);
 
-// ▶ 폰에서 워크플로 수동 실행 (GitHub Actions workflow_dispatch)
+// ▶ 폰에서 워크플로 실행 + 진행률 링 + 완료 시 자동 새로고침
+const WF="daily-blog.yml", RING_LEN=119.4;
+let RUNNING=false;
+function ghHeaders(){return {"Authorization":"Bearer "+CFG.ghToken,
+  "Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};}
+function ghGet(path){return fetch("https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo+path,
+  {headers:ghHeaders(),cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);}
+function setRing(pct){
+  pct=Math.max(0,Math.min(100,pct));
+  document.getElementById("ringFg").style.strokeDashoffset=(RING_LEN*(1-pct/100)).toFixed(1);
+  document.getElementById("runPct").textContent=Math.round(pct)+"%";
+}
+function setRunning(on){
+  RUNNING=on;
+  const w=document.getElementById("runWrap");
+  w.classList.toggle("running",on);
+  document.getElementById("runBtn").textContent=on?"⏸":"▶";
+}
+function stepProgress(jobs){
+  // 전체 단계 중 완료 비율(진행 중 단계는 절반으로 가중)
+  let total=0,done=0;
+  (jobs||[]).forEach(j=>(j.steps||[]).forEach(s=>{
+    total++; if(s.status==="completed")done++; else if(s.status==="in_progress")done+=0.5;}));
+  return total? (done/total*100):0;
+}
+
 document.getElementById("runBtn").onclick=async()=>{
+  if(RUNNING){toast("이미 실행 중입니다");return;}
   if(!CFG.ghOwner||!CFG.ghRepo||!CFG.ghToken){
     toast("설정에서 GitHub 정보를 먼저 입력하세요",1);openSheet();return;}
-  if(!confirm("지금 글 생성을 실행할까요? (몇 분 소요)"))return;
-  const wf="daily-blog.yml";
-  const url=`https://api.github.com/repos/${CFG.ghOwner}/${CFG.ghRepo}/actions/workflows/${wf}/dispatches`;
+  const withImg=(CFG.genImages!==false);
+  if(!confirm("지금 글 생성을 실행할까요?\n이미지 생성: "+(withImg?"켬":"끔")+" (몇 분 소요)"))return;
+
+  // 1) 워크플로 실행 요청
   try{
-    const r=await fetch(url,{method:"POST",
-      headers:{"Authorization":"Bearer "+CFG.ghToken,"Accept":"application/vnd.github+json",
-               "X-GitHub-Api-Version":"2022-11-28"},
-      body:JSON.stringify({ref:"main"})});
-    if(r.status===204){toast("실행 시작됨 ✓ 몇 분 뒤 ↻ 새로고침");}
-    else{const t=await r.text();console.log(t);
-      toast("실행 실패 "+r.status+" (토큰 권한 확인)",1);}
-  }catch(e){console.log(e);toast("실행 실패(네트워크)",1);}
+    const r=await fetch("https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo
+      +"/actions/workflows/"+WF+"/dispatches",
+      {method:"POST",headers:ghHeaders(),body:JSON.stringify({ref:"main",inputs:{images:withImg?"true":"false"}})});
+    if(r.status!==204){const t=await r.text();console.log(t);
+      toast("실행 실패 "+r.status+" (토큰 권한 확인)",1);return;}
+  }catch(e){console.log(e);toast("실행 실패(네트워크)",1);return;}
+
+  // 2) 실행 상태 표시 시작
+  setRunning(true); setRing(4); toast("실행 시작됨 ✓ 진행률 표시 중");
+  const startT=Date.now(); let runId=null;
+
+  async function poll(){
+    if(!RUNNING)return;
+    if(Date.now()-startT>20*60*1000){ // 20분 안전 타임아웃
+      toast("시간 초과 — ↻ 로 확인하세요",1); setRunning(false); return;}
+    try{
+      if(!runId){ // 방금 만든 실행 찾기(가장 최근, 요청 이후 생성)
+        const list=await ghGet("/actions/workflows/"+WF+"/runs?event=workflow_dispatch&per_page=5");
+        const run=(list&&list.workflow_runs||[]).find(x=>new Date(x.created_at).getTime()>=startT-90000);
+        if(run)runId=run.id;
+        setRing(6);
+      }
+      if(runId){
+        const run=await ghGet("/actions/runs/"+runId);
+        const jobs=await ghGet("/actions/runs/"+runId+"/jobs");
+        let pct=stepProgress(jobs&&jobs.jobs);
+        // 시간 기반 최소 진행(단계 정보 지연 대비) — 최대 95%까지만
+        const timePct=Math.min(95,(Date.now()-startT)/(4*60*1000)*100);
+        pct=Math.max(pct,timePct,8);
+        setRing(run&&run.status==="completed"?100:pct);
+        if(run&&run.status==="completed"){
+          const ok=run.conclusion==="success";
+          setRing(100);
+          toast(ok?"생성 완료 ✓ 새로고침합니다":"실행 종료: "+run.conclusion,!ok);
+          setTimeout(()=>{setRunning(false); loadData(true);},900); // 자동 새로고침
+          return;
+        }
+      }
+    }catch(e){console.log("poll",e);}
+    setTimeout(poll,5000);
+  }
+  setTimeout(poll,3000);
+};
+
+// ===== 조회·수익 패널 =====
+let HISTCOUNTS=null;
+async function loadHistoryCounts(){
+  const base=(CFG.dataUrl&&CFG.dataUrl.length?CFG.dataUrl:"./data/latest.json").replace(/latest\.json.*$/,"history.json");
+  try{const r=await fetch(base,{cache:"no-store"});if(r.ok){const h=await r.json();
+    const c={};(h.articles||[]).forEach(a=>{if(a.category)c[a.category]=(c[a.category]||0)+1});
+    return {byCat:c,total:(h.articles||[]).length};}}catch(e){}
+  return null;
+}
+function won(n){return "₩"+Math.round(n).toLocaleString();}
+async function openStats(){
+  document.getElementById("stViews").value=CFG.stViews||"";
+  document.getElementById("stRpm").value=CFG.stRpm||"";
+  document.getElementById("stRealViews").value=CFG.stRealViews||"";
+  document.getElementById("stRealRev").value=CFG.stRealRev||"";
+  // 워드프레스 통계/관리자 바로가기 (사이트 주소 기반)
+  const wp=document.getElementById("lnkWp");
+  if(CFG.site){const base=CFG.site.replace(/\/+$/,"");wp.href=base+"/wp-admin/index.php";wp.style.display="";}
+  else{wp.style.display="none";}
+  document.getElementById("statsBg").classList.add("open");
+  document.getElementById("statsSheet").classList.add("open");
+  HISTCOUNTS=await loadHistoryCounts();
+  computeStats();
+}
+function closeStats(){document.getElementById("statsBg").classList.remove("open");
+  document.getElementById("statsSheet").classList.remove("open");}
+function computeStats(){
+  const arts=DATA?.articles||[];
+  const perCatToday={}; arts.forEach(a=>{if(a.category)perCatToday[a.category]=(perCatToday[a.category]||0)+1});
+  const cum = HISTCOUNTS?HISTCOUNTS.byCat:perCatToday;
+  const totalPosts = HISTCOUNTS?HISTCOUNTS.total:(DATA?.total_all||arts.length);
+
+  const vpp=parseFloat(CFG.stViews)||300;
+  const rpm=parseFloat(CFG.stRpm)||5000;
+  const realViews=parseFloat(CFG.stRealViews)||0;
+  const realRev=parseFloat(CFG.stRealRev)||0;
+
+  const estViews = realViews>0 ? realViews : totalPosts*vpp;
+  const estRev = realRev>0 ? realRev : (estViews/1000*rpm);
+
+  document.getElementById("statsSummary").innerHTML=
+    `<div class="metrics">
+      <span class="mchip m-vol">📝 누적 글 <b>${totalPosts}</b></span>
+      <span class="mchip">👁 예상 월조회 <b>${(estViews).toLocaleString()}</b></span>
+      <span class="mchip m-steady">💰 예상 월수익 <b>${won(estRev)}</b></span>
+     </div>
+     <div class="hint" style="margin-top:6px">연 환산 약 <b style="color:var(--ok)">${won(estRev*12)}</b>
+       ${realRev>0?"(실제 입력값)":realViews>0?"(실제 조회수 기반)":"(가정값 기반 추정)"}</div>`;
+
+  // 카테고리별
+  const rows=Object.keys(cum).map(c=>{
+    const posts=cum[c];const v=posts*vpp;const rev=v/1000*rpm;
+    return `<tr><td style='padding:6px 4px'>${c}</td>
+      <td style='padding:6px 4px;text-align:right'>${posts}</td>
+      <td style='padding:6px 4px;text-align:right'>${v.toLocaleString()}</td>
+      <td style='padding:6px 4px;text-align:right;color:#ffd479'>${won(rev)}</td></tr>`;}).join("");
+  document.getElementById("statsResult").innerHTML=Object.keys(cum).length?
+    `<table style='width:100%;border-collapse:collapse;font-size:13px'>
+      <thead><tr style='color:var(--muted)'><th style='text-align:left;padding:6px 4px'>카테고리</th>
+      <th style='text-align:right;padding:6px 4px'>글</th><th style='text-align:right;padding:6px 4px'>월조회</th>
+      <th style='text-align:right;padding:6px 4px'>예상수익</th></tr></thead><tbody>${rows}</tbody></table>`:"";
+}
+document.getElementById("statsBtn").onclick=openStats;
+document.getElementById("statsBg").onclick=closeStats;
+document.getElementById("stClose").onclick=closeStats;
+document.getElementById("stSave").onclick=()=>{
+  CFG.stViews=document.getElementById("stViews").value;
+  CFG.stRpm=document.getElementById("stRpm").value;
+  CFG.stRealViews=document.getElementById("stRealViews").value;
+  CFG.stRealRev=document.getElementById("stRealRev").value;
+  saveCfg();computeStats();toast("계산 완료 ✓");};
+document.getElementById("stWpCount").onclick=async()=>{
+  if(!CFG.site||!CFG.user||!CFG.pass){toast("설정에 워드프레스 정보를 먼저 입력",1);return;}
+  const el=document.getElementById("stWpHint");el.textContent="불러오는 중…";
+  try{
+    const base=CFG.site.replace(/\/+$/,"");const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
+    const r=await fetch(base+"/wp-json/wp/v2/posts?per_page=1&status=publish",{headers:{Authorization:auth}});
+    const total=r.headers.get("X-WP-Total");
+    el.innerHTML=total?`WordPress 실제 발행(게시완료) 글: <b>${total}</b>개`:"헤더를 읽지 못했습니다(서버 CORS 설정 필요).";
+  }catch(e){el.textContent="조회 실패(네트워크/CORS).";}
 };
 
 // 데이터 로드
