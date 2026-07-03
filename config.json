@@ -1,10 +1,11 @@
 {
   "blog_url": "https://your-blog.com",
   "categories": [
-    { "name": "금융/재테크", "wp_category": "금융", "desc": "신용카드, 대출, 정부지원금, 연금, 세금, 청약, 재테크, 주식/ETF 등 고단가 금융 주제" },
-    { "name": "건강/생활", "wp_category": "건강", "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진 등 고단가 건강·생활 주제" },
-    { "name": "경제/IT", "wp_category": "경제IT", "desc": "물가·금리·부동산 경제, AI 도구, 클라우드, 앱/프로그램 사용법 등 경제/IT 주제" }
+    { "name": "금융/재테크", "wp_category": "금융", "wp_slug": "finance", "desc": "신용카드, 대출, 정부지원금, 연금, 세금, 청약, 재테크, 주식/ETF 등 고단가 금융 주제" },
+    { "name": "건강/생활", "wp_category": "건강", "wp_slug": "health", "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진 등 고단가 건강·생활 주제" },
+    { "name": "경제/IT", "wp_category": "경제IT", "wp_slug": "econ-it", "desc": "물가·금리·부동산 경제, AI 도구, 클라우드, 앱/프로그램 사용법 등 경제/IT 주제" }
   ],
+  "_categories_설명": "wp_category=워드프레스 카테고리 이름, wp_slug=영문 주소(/category/finance/). 슬러그 비우면 이름으로 자동 생성",
 
   "counts": {
     "long_series": 2, "long_single": 2,
