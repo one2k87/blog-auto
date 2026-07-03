@@ -39,9 +39,12 @@
   .ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:3}
   .ring-fg{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;
     stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .5s ease}
-  .run-wrap.running #runBtn{border-color:var(--accent);background:var(--accent);
-    animation:runpulse 1.1s ease-in-out infinite}
-  @keyframes runpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.86);opacity:.6}}
+  .run-wrap.running #runBtn{border-color:var(--accent);background:var(--accent)}
+  /* 재생/일시정지 아이콘 (동일 톤: 흰색 도형) */
+  .ic-play{display:inline-block;width:0;height:0;margin-left:3px;
+    border-left:13px solid #fff;border-top:8px solid transparent;border-bottom:8px solid transparent}
+  .ic-pause{display:inline-flex;gap:4px}
+  .ic-pause i{width:4px;height:15px;background:#fff;border-radius:1px}
   .run-pct{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);
     font-size:9px;font-weight:700;color:var(--accent);white-space:nowrap;display:none}
   .run-wrap.running .run-pct{display:block}
@@ -136,7 +139,7 @@
       <circle class="ring-bg" cx="22" cy="22" r="19"></circle>
       <circle class="ring-fg" id="ringFg" cx="22" cy="22" r="19"></circle>
     </svg>
-    <button class="icon-btn" id="runBtn">▶</button>
+    <button class="icon-btn" id="runBtn"><span class="ic-play"></span></button>
     <span class="run-pct" id="runPct"></span>
   </div>
   <button class="icon-btn" id="reload" title="새로고침">↻</button>
@@ -772,7 +775,10 @@ function setRunning(on){
   RUNNING=on;
   const w=document.getElementById("runWrap");
   w.classList.toggle("running",on);
-  document.getElementById("runBtn").textContent="▶";  // 실행 중에도 재생 모양 유지(펄스로 진행 표시)
+  // 실행 중=일시정지, 대기=재생 (동일 톤 흰색 도형)
+  document.getElementById("runBtn").innerHTML = on
+    ? '<span class="ic-pause"><i></i><i></i></span>'
+    : '<span class="ic-play"></span>';
 }
 function stepProgress(jobs){
   // 전체 단계 중 완료 비율(진행 중 단계는 절반으로 가중)
@@ -789,13 +795,22 @@ document.getElementById("runBtn").onclick=async()=>{
   const withImg=(CFG.genImages!==false);
   if(!confirm("지금 글 생성을 실행할까요?\n이미지 생성: "+(withImg?"켬":"끔")+" (몇 분 소요)"))return;
 
-  // 1) 워크플로 실행 요청
+  // 1) 워크플로 실행 요청 (입력 미지원 워크플로면 자동으로 단계적 재시도)
+  const dispatch=(inputs,ref)=>fetch(
+    "https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo+"/actions/workflows/"+WF+"/dispatches",
+    {method:"POST",headers:ghHeaders(),body:JSON.stringify({ref:ref||"main",inputs})});
   try{
-    const r=await fetch("https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo
-      +"/actions/workflows/"+WF+"/dispatches",
-      {method:"POST",headers:ghHeaders(),body:JSON.stringify({ref:"main",inputs:runInputs(withImg)})});
-    if(r.status!==204){const t=await r.text();console.log(t);
-      toast("실행 실패 "+r.status+" (토큰 권한 확인)",1);return;}
+    let r=await dispatch(runInputs(withImg));                 // 카테고리+이미지 입력
+    if(r.status===422) r=await dispatch({images:withImg?"true":"false"}); // 카테고리 미지원 → 제거
+    if(r.status===422) r=await dispatch({});                  // 이미지 입력도 미지원 → 입력 없이
+    if(r.status===422) r=await dispatch({}, "master");        // 기본 브랜치가 master인 경우
+    if(r.status!==204){
+      const t=await r.text(); console.log("dispatch",r.status,t);
+      const hint = (r.status===401||r.status===403) ? "토큰 권한(Actions 쓰기) 확인"
+        : r.status===404 ? "사용자명/저장소/워크플로 파일 확인"
+        : r.status===422 ? "브랜치(main) 또는 워크플로 설정 확인" : "";
+      toast("실행 실패 "+r.status+(hint?" · "+hint:""),1); return;
+    }
   }catch(e){console.log(e);toast("실행 실패(네트워크)",1);return;}
 
   // 2) 실행 상태 표시 시작
