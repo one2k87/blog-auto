@@ -16,17 +16,20 @@
 
   "images": {
     "provider": "gemini",
-    "model": "imagen-3.0-generate-001",
+    "model": "imagen-4.0-fast-generate-001",
     "size": "1024x1024",
-    "_provider_옵션": "gemini | openai | none · 무료 등급이면 none 권장(이미지도 별도 한도 있음)",
+    "max_per_run": 20,
+    "_max_per_run_설명": "실행 1회당 이미지 생성 최대 개수(비용 상한). 초과분은 자리표시로 대체",
+    "_model_설명": "Fast=저가(장당 약 $0.02). 예산 위해 이미지 개수 제한",
     "api_key": ""
   },
 
   "llm": {
     "provider": "gemini",
     "api_key": "여기에-Gemini-API-키-입력",
-    "model": "gemini-2.5-flash-lite",
-    "_model_설명": "무료 등급: 2.5-flash는 하루 20회로 축소됨. flash-lite는 하루 ~1,000회라 적합"
+    "model": "gemini-2.5-flash",
+    "fallback_models": ["gemini-2.5-flash-lite", "gemini-2.0-flash"],
+    "_설명": "품질 위해 2.5-flash 사용. 한도 걸리면 flash-lite로 자동 전환"
   },
 
   "metrics": {
@@ -37,7 +40,7 @@
     "naver": { "api_key": "네이버-액세스라이선스", "secret_key": "네이버-비밀키", "customer_id": "네이버-고객ID숫자" }
   },
 
-  "perf": { "workers": 3, "classify": true },
+  "perf": { "workers": 4, "classify": true },
 
   "wordpress": {
     "enabled": false,
