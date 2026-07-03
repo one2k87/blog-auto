@@ -58,15 +58,19 @@ cfg = {
         # 폰/수동 실행에서 images=false 를 넘기면 이미지 생성 끔
         "provider": ("none" if str(os.getenv("IMAGE_ENABLED", "")).strip().lower() == "false"
                      else envs("IMAGE_PROVIDER", "gemini")),
-        "model": envs("IMAGE_MODEL", "imagen-3.0-generate-001"),
+        "model": envs("IMAGE_MODEL", "imagen-4.0-fast-generate-001"),  # Fast=저가
         "size": envs("IMAGE_SIZE", "1024x1024"),
+        "max_per_run": envi("IMAGE_MAX_PER_RUN", 20),                   # 비용 상한
         "api_key": envs("IMAGE_API_KEY", ""),
     },
     "llm": {
         "provider": envs("LLM_PROVIDER", "gemini"),
         "api_key": envs("LLM_API_KEY", ""),
-        # 무료 등급: 2.5-flash 는 하루 20회로 축소됨 → flash-lite(하루 ~1,000회)를 기본값으로
-        "model": envs("LLM_MODEL", "gemini-2.5-flash-lite"),
+        # 무료 등급: 2.5-flash 는 하루 20회로 축소됨 → flash-lite 를 기본
+        "model": envs("LLM_MODEL", "gemini-2.5-flash"),   # 품질 위해 flash(유료). 무료면 flash-lite 권장
+        # 한도에 걸리면 아래 순서로 자동 전환
+        "fallback_models": [s.strip() for s in envs(
+            "FALLBACK_MODELS", "gemini-2.5-flash-lite,gemini-2.0-flash").split(",") if s.strip()],
     },
     "metrics": {
         "provider": envs("METRICS_PROVIDER", "naver"),
@@ -88,8 +92,8 @@ cfg = {
     },
     "sheets": {"enabled": False},
     "perf": {
-        "workers": envi("WORKERS", 3),      # 슬롯 병렬 생성(이미지·글 대기시간 겹치기)
-        "classify": b("CLASSIFY", True),    # false 면 판별 LLM 호출 생략(무료 등급 속도↑)
+        "workers": envi("WORKERS", 4),      # 유료 등급이면 4~6 권장(빠름)
+        "classify": b("CLASSIFY", True),
     },
 }
 
