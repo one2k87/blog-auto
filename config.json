@@ -1,23 +1,10 @@
 {
   "blog_url": "https://your-blog.com",
   "categories": [
-    {
-      "name": "금융/재테크",
-      "wp_category": "금융",
-      "desc": "신용카드, 대출, 정부지원금·보조금, 연금·노후, 세금·연말정산, 청약·전세자금, 재테크·적금, 주식/ETF 입문 등 고단가 금융 주제"
-    },
-    {
-      "name": "건강/생활",
-      "wp_category": "건강",
-      "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진, 생활 속 건강 습관 등 고단가 건강·생활 주제"
-    },
-    {
-      "name": "경제/IT",
-      "wp_category": "경제IT",
-      "desc": "물가·금리·부동산 경제 이슈, AI 도구, 클라우드·SaaS, 앱·프로그램 사용법, 스마트폰·PC 설정 등 경제/IT 주제"
-    }
+    { "name": "금융/재테크", "wp_category": "금융", "desc": "신용카드, 대출, 정부지원금, 연금, 세금, 청약, 재테크, 주식/ETF 등 고단가 금융 주제" },
+    { "name": "건강/생활", "wp_category": "건강", "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진 등 고단가 건강·생활 주제" },
+    { "name": "경제/IT", "wp_category": "경제IT", "desc": "물가·금리·부동산 경제, AI 도구, 클라우드, 앱/프로그램 사용법 등 경제/IT 주제" }
   ],
-  "_categories_설명": "각 카테고리마다 counts(6슬롯)로 동일 생성. wp_category=워드프레스에서 나눠 게시할 카테고리 주소명",
 
   "counts": {
     "long_series": 2, "long_single": 2,
@@ -31,14 +18,15 @@
     "provider": "gemini",
     "model": "imagen-3.0-generate-001",
     "size": "1024x1024",
-    "_provider_옵션": "gemini(Gemini키 재사용) | openai | none · 속도 위해 512x512로 낮춰도 됨",
+    "_provider_옵션": "gemini | openai | none · 무료 등급이면 none 권장(이미지도 별도 한도 있음)",
     "api_key": ""
   },
 
   "llm": {
     "provider": "gemini",
     "api_key": "여기에-Gemini-API-키-입력",
-    "model": "gemini-2.5-flash"
+    "model": "gemini-2.5-flash-lite",
+    "_model_설명": "무료 등급: 2.5-flash는 하루 20회로 축소됨. flash-lite는 하루 ~1,000회라 적합"
   },
 
   "metrics": {
@@ -46,20 +34,10 @@
     "low_volume_floor": 100,
     "low_volume_ceil": 8000,
     "use_trends_steadiness": false,
-    "_use_trends_설명": "true면 후보마다 Google Trends 12개월 조회(느림·불안정). 속도 위해 기본 false",
-    "naver": {
-      "api_key": "네이버-액세스라이선스",
-      "secret_key": "네이버-비밀키",
-      "customer_id": "네이버-고객ID숫자"
-    }
+    "naver": { "api_key": "네이버-액세스라이선스", "secret_key": "네이버-비밀키", "customer_id": "네이버-고객ID숫자" }
   },
 
-  "perf": {
-    "workers": 3,
-    "classify": true,
-    "_workers_설명": "슬롯 병렬 생성 수(이미지·글 대기시간 겹치기). 429(분당제한) 뜨면 2/1로 낮추기",
-    "_classify_설명": "false면 저경쟁/시즌 판별 LLM 호출을 생략해 무료 등급에서 더 빠름"
-  },
+  "perf": { "workers": 3, "classify": true },
 
   "wordpress": {
     "enabled": false,
@@ -70,9 +48,5 @@
     "category_id": null
   },
 
-  "sheets": {
-    "enabled": false,
-    "service_account_file": "service_account.json",
-    "spreadsheet_id": ""
-  }
+  "sheets": { "enabled": false, "service_account_file": "service_account.json", "spreadsheet_id": "" }
 }
