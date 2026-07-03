@@ -4,11 +4,11 @@
   "blog_url": "https://your-blog.com",
   "_blog_url_설명": "내부링크(함께 보면 좋은 글) 주소 만들 때 사용",
   "categories": [
-    { "name": "금융/재테크", "desc": "신용카드, 대출, 정부지원금, 연금, 세금, 청약, 재테크, 주식/ETF 등 고단가 금융 주제" },
-    { "name": "건강/생활", "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진 등 고단가 건강·생활 주제" },
-    { "name": "경제/IT", "desc": "물가·금리·부동산 경제, AI 도구, 클라우드, 앱/프로그램 사용법 등 경제/IT 주제" }
+    { "name": "금융/재테크", "wp_category": "금융", "desc": "신용카드, 대출, 정부지원금, 연금, 세금, 청약, 재테크, 주식/ETF 등 고단가 금융 주제" },
+    { "name": "건강/생활", "wp_category": "건강", "desc": "다이어트, 영양제, 탈모, 피부, 수면, 홈트, 건강검진 등 고단가 건강·생활 주제" },
+    { "name": "경제/IT", "wp_category": "경제IT", "desc": "물가·금리·부동산 경제, AI 도구, 클라우드, 앱/프로그램 사용법 등 경제/IT 주제" }
   ],
-  "_categories_설명": "각 카테고리마다 counts(6슬롯)로 동일하게 생성. 카테고리를 추가/삭제 가능",
+  "_categories_설명": "각 카테고리마다 counts(6슬롯) 동일 생성. wp_category=워드프레스에서 나눠 게시할 카테고리 주소명(생략 시 name 사용)",
 
   "counts": {
     "long_series": 2, "long_single": 2,
@@ -39,7 +39,7 @@
     "provider": "naver",
     "low_volume_floor": 100,
     "low_volume_ceil": 8000,
-    "use_trends_steadiness": true,
+    "use_trends_steadiness": false,
     "naver": {
       "_안내": "searchad.naver.com > 도구 > API 사용관리에서 발급",
       "api_key": "액세스라이선스",
@@ -47,6 +47,8 @@
       "customer_id": "고객ID(숫자)"
     }
   },
+
+  "perf": { "workers": 3, "classify": true, "_설명": "workers=병렬 생성 수(429 뜨면 2/1). classify=false면 판별 호출 생략(무료 속도↑)" },
 
   "wordpress": {
     "enabled": false,
