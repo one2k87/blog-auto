@@ -81,10 +81,15 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
                cfg["llm"], max_tokens=900, temperature=0.9)
     cand = topics.parse_topics(raw, pool)
 
-    print(f"  · 주제 판별(저경쟁/시즌) 중…")
-    topics.classify_topics(cand, cat["name"], chat, cfg["llm"])
-    match = [c for c in cand if c.get("lane_ai") == lane]
-    ordered = match + [c for c in cand if c.get("lane_ai") != lane]  # 부족하면 나머지로 보충
+    # 지속 판별(저경쟁 vs 시즌). 속도 위해 perf.classify=false 면 건너뜀
+    # (이미 lane별 프롬프트로 생성했으므로 끄더라도 분류 자체는 유지됨)
+    if cfg.get("perf", {}).get("classify", True):
+        print(f"  · 주제 판별(저경쟁/시즌) 중…")
+        topics.classify_topics(cand, cat["name"], chat, cfg["llm"])
+        match = [c for c in cand if c.get("lane_ai") == lane]
+        ordered = match + [c for c in cand if c.get("lane_ai") != lane]  # 부족하면 나머지로 보충
+    else:
+        ordered = cand
 
     # 3) long은 네이버 실측으로 선별
     if lane == "long" and measured:
@@ -272,6 +277,24 @@ def run():
     cats = get_categories(cfg)
 
     print(f"=== {datetime.now():%Y-%m-%d %H:%M} 수익형 글 생성 시작 · 카테고리 {len(cats)}개 ===")
+
+    # --- LLM 사전 점검: 키/모델이 유효한지 먼저 확인(문제 시 명확히 실패) ---
+    lcfg = cfg.get("llm", {})
+    if not lcfg.get("api_key") or "여기에" in str(lcfg.get("api_key")):
+        raise SystemExit("[치명적] LLM api_key 가 비어 있습니다. GitHub 시크릿 LLM_API_KEY 를 확인하세요.")
+    try:
+        t = chat("한 단어로 'OK' 만 답하세요.", lcfg, max_tokens=8, temperature=0)
+        print(f"[preflight] LLM OK (provider={lcfg.get('provider')}, model={lcfg.get('model')}) → {str(t)[:30]!r}")
+    except Exception as e:
+        print("=" * 64)
+        print("[치명적] LLM 호출 실패 — 키 또는 모델명을 확인하세요.")
+        print(f"  provider={lcfg.get('provider')}  model={lcfg.get('model')}")
+        print(f"  오류: {e}")
+        print("  힌트: 모델을 'gemini-2.5-flash' → 'gemini-1.5-flash' 로 바꿔보거나,")
+        print("        LLM_API_KEY 가 올바른 Gemini API 키(AIza...)인지 확인하세요.")
+        print("=" * 64)
+        raise SystemExit(1)
+
     hist = load_history()
 
     all_articles = []
