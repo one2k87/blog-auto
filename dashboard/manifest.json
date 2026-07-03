@@ -1,12 +1,12 @@
 {
-  "name": "AdSense 자동 블로그",
-  "short_name": "블로그자동화",
-  "description": "매일 핫이슈 5 + 세분화 5 블로그 글을 생성하고 워드프레스에 게시",
+  "name": "Scripto",
+  "short_name": "Scripto",
+  "description": "카테고리 집중 AI 블로그 자동화 — 매일 저경쟁·시즌·시리즈 글 생성과 게시 관리",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1115",
+  "background_color": "#0f0b18",
   "theme_color": "#7c5cff",
   "lang": "ko",
   "icons": [
