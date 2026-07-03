@@ -1,29 +1,12 @@
 {
-  "generated_at": "2026-07-03T07:00:00",
-  "category": "금융/재테크",
-  "auto_publish": false,
-  "total_in_category": 2,
-  "_note": "샘플입니다. python main.py 실행 시 실제 결과로 덮어써집니다.",
-  "articles": [
-    {
-      "kind": "long", "lang": "ko", "keyword": "무직자 소액 비상금 대출 조건",
-      "status": "복붙대기", "post_url": "", "slug": "unemployed-emergency-loan",
-      "volume": 2400, "competition": "낮음", "steadiness": 0.86,
-      "title": "무직자 소액 비상금 대출 조건 총정리 (한도·금리·필요서류)",
-      "meta": "무직자도 받을 수 있는 소액 비상금 대출의 조건, 한도, 금리, 필요 서류를 표로 한눈에 정리했습니다.",
-      "tags": ["무직자대출", "비상금대출", "소액대출", "대출조건", "서민금융"],
-      "links": [{"title": "서민금융진흥원", "url": "https://www.kinfa.or.kr"}],
-      "html": "<p class='hook' style='font-size:17px;font-weight:600'>갑자기 목돈이 필요한데 소득 증빙이 어렵다면 어떻게 해야 할까요?</p><h2>무직자 비상금 대출 조건</h2><p>핵심부터 말하면 소액·단기 상품 위주로 접근해야 합니다.</p><div class='ad-slot' style='margin:26px 0;padding:14px;border:1px dashed #d8dbe0;border-radius:10px;text-align:center;background:#fafbfc'><p style='margin:0 0 8px;color:#666'>더 자세한 내용은 아래에서 이어서 확인해보세요.</p><div style='color:#b6bcc6'>[ 광고 자리 ]</div></div><h2>한도와 금리</h2><p>상품별로 다릅니다.</p><h2>자주 묻는 질문</h2><h3>무직자도 정말 받을 수 있나요?</h3><p>서민금융 상품 위주로 가능성이 있습니다.</p>"
-    },
-    {
-      "kind": "season", "lang": "ko", "keyword": "근로장려금 신청 자격 2026",
-      "status": "복붙대기", "post_url": "", "slug": "eitc-2026",
-      "volume": 5200, "competition": "중간", "steadiness": 0.7,
-      "title": "2026 근로장려금 신청 자격과 지급일 (놓치면 손해)",
-      "meta": "2026년 근로장려금 신청 자격, 소득 기준, 지급일과 신청 방법을 미리 정리했습니다. 신청 시기 놓치지 마세요.",
-      "tags": ["근로장려금", "EITC", "신청자격", "정부지원금", "환급"],
-      "links": [{"title": "국세청 홈택스", "url": "https://www.hometax.go.kr"}],
-      "html": "<p class='hook' style='font-size:17px;font-weight:600'>매년 받을 수 있는 돈, 신청 안 해서 놓치고 계신 건 아닌가요?</p><h2>근로장려금이란</h2><p>일하는 저소득 가구에 주는 현금 지원입니다.</p><h2>2026 신청 자격</h2><p>가구 유형별 소득·재산 기준을 확인하세요.</p><h2>함께 보면 좋은 글</h2><ul><li><a href='#'>무직자 소액 비상금 대출 조건 총정리</a></li></ul>"
-    }
-  ]
+  "generated_at": "2026-07-03T02:04:01",
+  "categories": [
+    "금융/재테크",
+    "건강/생활",
+    "경제/IT"
+  ],
+  "auto_publish": true,
+  "per_category": {},
+  "total_all": 0,
+  "articles": []
 }
