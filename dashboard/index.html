@@ -380,7 +380,7 @@ function render(){
   const list=visible(),grid=document.getElementById("grid"),empty=document.getElementById("empty");
   if(!list.length){grid.innerHTML="";empty.style.display="block";
     empty.innerHTML=arts.length?"이 필터에 해당하는 글이 없습니다.":
-      "아직 데이터가 없습니다.<br><br>클라우드 자동화(GitHub Actions)가 매일 7시에<br><code>data/latest.json</code> 을 갱신하면 여기 표시됩니다.<br>설정 ⚙️ 에서 데이터 주소를 넣어보세요.";return;}
+      "표시할 글이 없습니다.<br><br>① 설정 ⚙️ 의 <b>데이터 주소</b>가 <code>.../data/latest.json</code> 로 정확한지,<br>② 방금 실행이 <b>글 0편</b>으로 끝나지 않았는지 확인하세요.<br><br>GitHub → Actions → 최근 실행 → <b>블로그 생성 실행</b> 로그에<br>‘글 0편’ 또는 ‘[오류] … 실패’ 가 있으면 <b>LLM 키/모델</b> 문제입니다.";return;}
   empty.style.display="none";
   grid.innerHTML=list.map((a,i)=>{
     const pub=a.status==="게시됨";
