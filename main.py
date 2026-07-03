@@ -113,8 +113,9 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
     return ordered[:n_slots]
 
 
-def make_image_resolver(cfg, auto_publish, category=""):
-    """[[IMG:설명]] → 실제 이미지 자동 생성 후 <figure> 반환하는 콜백(카테고리별)."""
+def make_image_resolver(cfg, auto_publish, category="", budget=None):
+    """[[IMG:설명]] → 실제 이미지 자동 생성 후 <figure> 반환하는 콜백(카테고리별).
+    budget={"used":n,"max":N} 로 실행 1회당 이미지 개수를 제한(비용 상한)."""
     imgcfg = dict(cfg.get("images", {}) or {})
     if imgcfg.get("provider") in ("gemini", "imagen", "google") and not imgcfg.get("api_key"):
         imgcfg["api_key"] = cfg["llm"].get("api_key", "")   # Gemini 키 재사용
@@ -125,9 +126,13 @@ def make_image_resolver(cfg, auto_publish, category=""):
         return None
 
     def resolver(desc, idx):
+        if budget is not None and budget.get("used", 0) >= budget.get("max", 10 ** 9):
+            return None                      # 비용 상한 초과 → 자리표시로 대체
         path = images.generate_image(desc, imgcfg, out, idx, category=category)
         if not path:
             return None
+        if budget is not None:
+            budget["used"] = budget.get("used", 0) + 1
         src = None
         if auto_publish and wp_cfg.get("enabled"):
             src = upload_media(path, wp_cfg, alt=desc)
@@ -174,13 +179,13 @@ def _plan_slots(cfg):
     return slots
 
 
-def _run_category(cfg, cat, hist, auto_publish):
+def _run_category(cfg, cat, hist, auto_publish, img_budget=None):
     """한 카테고리에 대해 슬롯 계획대로 글을 생성해 리스트로 반환."""
     name = cat["name"]
     blog_url = cfg.get("blog_url", "") or cfg.get("site", {}).get("blog_url", "")
     insert_ads = cfg.get("ads", {}).get("insert_slots", True)
     wp_cfg = cfg.get("wordpress", {})
-    resolver = make_image_resolver(cfg, auto_publish, name)
+    resolver = make_image_resolver(cfg, auto_publish, name, img_budget)
 
     # 이 카테고리의 과거 글만으로 중복방지 + 내부링크
     cat_hist = [a for a in hist["articles"] if a.get("category") == name]
@@ -297,12 +302,15 @@ def run():
 
     hist = load_history()
 
+    # 이미지 비용 상한: 실행 1회당 최대 개수(카테고리 합산)
+    img_budget = {"used": 0, "max": int(cfg.get("images", {}).get("max_per_run", 10 ** 9))}
+
     all_articles = []
     for cat in cats:
         if not cat["name"]:
             continue
         try:
-            all_articles += _run_category(cfg, cat, hist, auto_publish)
+            all_articles += _run_category(cfg, cat, hist, auto_publish, img_budget)
         except Exception as e:
             import traceback
             print(f"[오류] '{cat['name']}' 카테고리 생성 실패(건너뜀): {e}")
