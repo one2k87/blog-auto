@@ -61,9 +61,11 @@ def save_history(hist):
 def get_categories(cfg):
     """config에서 카테고리 목록을 만든다(구버전 site.category 호환)."""
     if cfg.get("categories"):
-        return [{"name": c.get("name", ""), "desc": c.get("desc", "")} for c in cfg["categories"]]
+        return [{"name": c.get("name", ""), "desc": c.get("desc", ""),
+                 "wp_category": c.get("wp_category", c.get("name", ""))} for c in cfg["categories"]]
     site = cfg.get("site", {})
-    return [{"name": site.get("category", ""), "desc": site.get("category_desc", "")}]
+    return [{"name": site.get("category", ""), "desc": site.get("category_desc", ""),
+             "wp_category": site.get("category", "")}]
 
 
 def collect_lane(cfg, cat, lane, n_slots, exclude):
@@ -207,19 +209,24 @@ def _run_category(cfg, cat, hist, auto_publish):
         related = [{"title": r["title"], "slug": r.get("slug", ""),
                     "url": r.get("post_url") or r.get("url", "")}
                    for r in (out[-2:] + related_pool)[:3]]
-        if mode == "series":
-            print(f"-> [시리즈 {n_parts}편][{lane}] {kw['keyword']}")
-            arts = generate_series(kw["keyword"], lane, n_parts, cfg["llm"],
-                                   category=name, related=related, blog_url=blog_url,
-                                   insert_ads=insert_ads, image_resolver=resolver)
-        else:
-            print(f"-> [단일][{lane}] {kw['keyword']}")
-            arts = generate_article(kw["keyword"], lane, cfg["llm"],
-                                    category=name, related=related, blog_url=blog_url,
-                                    insert_ads=insert_ads, image_resolver=resolver)
+        try:
+            if mode == "series":
+                print(f"-> [시리즈 {n_parts}편][{lane}] {kw['keyword']}")
+                arts = generate_series(kw["keyword"], lane, n_parts, cfg["llm"],
+                                       category=name, related=related, blog_url=blog_url,
+                                       insert_ads=insert_ads, image_resolver=resolver)
+            else:
+                print(f"-> [단일][{lane}] {kw['keyword']}")
+                arts = generate_article(kw["keyword"], lane, cfg["llm"],
+                                        category=name, related=related, blog_url=blog_url,
+                                        insert_ads=insert_ads, image_resolver=resolver)
+        except Exception as e:
+            print(f"[오류] '{kw['keyword']}' 글 생성 실패(건너뜀): {e}")
+            continue
         slot_count[lane] += 1
         for a in arts:
             a["category"] = name
+            a["wp_category"] = cat.get("wp_category", name)
             a["volume"] = kw.get("volume")
             a["competition"] = kw.get("competition", "")
             a["steadiness"] = kw.get("steadiness")
@@ -251,7 +258,12 @@ def run():
     for cat in cats:
         if not cat["name"]:
             continue
-        all_articles += _run_category(cfg, cat, hist, auto_publish)
+        try:
+            all_articles += _run_category(cfg, cat, hist, auto_publish)
+        except Exception as e:
+            import traceback
+            print(f"[오류] '{cat['name']}' 카테고리 생성 실패(건너뜀): {e}")
+            traceback.print_exc()
 
     today = datetime.now().strftime("%Y-%m-%d")
     for a in all_articles:
