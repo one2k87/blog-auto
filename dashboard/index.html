@@ -39,7 +39,9 @@
   .ring-bg{fill:none;stroke:rgba(255,255,255,.18);stroke-width:3}
   .ring-fg{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;
     stroke-dasharray:119.4;stroke-dashoffset:119.4;transition:stroke-dashoffset .5s ease}
-  .run-wrap.running #runBtn{border-color:var(--accent);background:var(--accent)}
+  .run-wrap.running #runBtn{border-color:var(--accent);background:var(--accent);
+    animation:runpulse 1.1s ease-in-out infinite}
+  @keyframes runpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.86);opacity:.6}}
   .run-pct{position:absolute;bottom:-13px;left:50%;transform:translateX(-50%);
     font-size:9px;font-weight:700;color:var(--accent);white-space:nowrap;display:none}
   .run-wrap.running .run-pct{display:block}
@@ -150,6 +152,13 @@
   <span class="chip" data-f="season">🗓️ 시즌 선점 <b id="c-season">0</b></span>
 </div>
 
+<div id="adBanner" style="display:none;margin:8px 16px;padding:14px;border:1px dashed var(--line);
+  border-radius:12px;background:var(--card);text-align:center;color:var(--muted);font-size:13px">
+  <div style="font-weight:700;color:var(--txt);margin-bottom:4px">광고</div>
+  <!-- 판매자: 여기에 애드센스/광고 코드를 넣으세요 (Basic 이용자에게만 표시) -->
+  <div id="adSlotArea">[ 광고 영역 · Pro/Max로 업그레이드하면 사라집니다 ]</div>
+</div>
+
 <div id="grid" class="grid"></div>
 <div id="empty" class="empty" style="display:none"></div>
 
@@ -157,6 +166,34 @@
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet" id="sheet">
   <h2>⚙️ 설정</h2>
+
+  <div class="field">
+    <label>현재 플랜</label>
+    <div id="planBadge" style="font-weight:800;margin:2px 0 6px"></div>
+    <input id="cfgLicense" placeholder="라이선스 키 입력 (Pro/Max)" autocapitalize="off">
+    <div class="actions" style="margin-top:8px">
+      <button class="btn sm" id="licVerify">키 확인</button>
+      <a class="btn sm" id="buyPro" href="#" target="_blank" rel="noopener">Pro 구독</a>
+      <a class="btn sm" id="buyMax" href="#" target="_blank" rel="noopener">Max 구독</a>
+    </div>
+    <div class="hint">Basic(무료)=카테고리 2개+광고 · Pro=3개+광고제거 · Max=10개+광고제거.
+      결제 후 받은 키를 넣고 '키 확인'을 누르세요.</div>
+  </div>
+
+  <div class="field">
+    <label>내 카테고리 (<span id="catCount">0</span>/<span id="catMax">2</span>)</label>
+    <div id="catEditor"></div>
+    <div class="row" style="gap:6px;margin-top:6px">
+      <input id="newCatName" placeholder="카테고리명 (예: 반려동물)" style="flex:1">
+    </div>
+    <div class="row" style="gap:6px;margin-top:6px">
+      <input id="newCatDesc" placeholder="세부 주제 설명 (선택)" style="flex:1">
+      <button class="btn sm" id="catAdd">추가</button>
+    </div>
+    <div class="hint">여기서 정한 카테고리로 ▶ 실행 시 글이 생성됩니다. 플랜 한도까지 추가 가능.</div>
+  </div>
+
+  <div class="divider"></div>
 
   <div class="field">
     <label>데이터 주소 (latest.json URL)</label>
@@ -230,6 +267,17 @@
     <a class="btn sm" id="lnkWp" href="#" target="_blank" rel="noopener">🌐 워드프레스 통계</a>
   </div>
 
+  <div style="padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);margin-bottom:14px">
+    <div style="font-weight:700;margin-bottom:6px">🔋 AI 한도 한눈에 보기</div>
+    <div id="quotaBox" style="font-size:13px;color:var(--muted);line-height:1.6"></div>
+    <div style="height:8px;border-radius:5px;background:var(--card2);overflow:hidden;margin:8px 0 4px">
+      <div id="quotaBar" style="height:100%;width:0%;background:var(--accent)"></div>
+    </div>
+    <a class="btn sm" href="https://ai.dev/rate-limit" target="_blank" rel="noopener">구글 실제 사용량 보기</a>
+    <div class="hint">무료 flash-lite ≈ 하루 1,000회 · 매일 태평양시 자정(한국 약 오후 4~5시) 리셋.
+      아래는 이번 실행 기준 추정치입니다(정확치는 위 버튼).</div>
+  </div>
+
   <h2 style="font-size:14px">가정값 입력</h2>
   <div class="field">
     <label>글당 월 평균 조회수</label>
@@ -275,6 +323,63 @@ let CFG=loadCfg();
 
 function loadCfg(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return {}}}
 function saveCfg(){localStorage.setItem(LS,JSON.stringify(CFG))}
+
+/* ===================== 구독 플랜(Basic/Pro/Max) =====================
+   ▶ 판매자(=당신)만 아래 SELLER 설정을 채웁니다. 고객은 라이선스 키만 입력합니다.
+   결제는 백엔드 없이 되는 '호스팅 결제 + 라이선스 키' 방식(Gumroad 또는 Lemon Squeezy).
+   - provider: "gumroad" | "lemonsqueezy" | "none"(데모: PRO-/MAX- 접두 키로 테스트)
+   - checkout: 각 플랜 결제 페이지 URL(판매자가 provider에서 만든 링크)
+   - gumroadProductId / lsStoreId: 라이선스 검증에 쓰는 값
+   자세한 설정법은 '수익화_사업가이드.md' 참고. */
+const SELLER = {
+  provider: "none",
+  checkout: { pro: "", max: "" },     // 예) "https://내상점.gumroad.com/l/pro"
+  gumroad: { proProductId: "", maxProductId: "" },
+  lemon:   { proStoreId: "", maxStoreId: "" }
+};
+const PLAN_LIMITS = { basic: 2, pro: 3, max: 10 };
+const PLAN_LABEL  = { basic: "Basic(무료)", pro: "Pro", max: "Max" };
+
+function currentPlan(){ return CFG.plan || "basic"; }
+function catLimit(){ return PLAN_LIMITS[currentPlan()] || 2; }
+function isPaid(){ return currentPlan() === "pro" || currentPlan() === "max"; }
+
+async function verifyLicense(key){
+  key = (key||"").trim();
+  if(!key) return {ok:false, msg:"키를 입력하세요"};
+  // 데모(판매자 미설정): 접두어로 플랜 부여 — 실제 판매 전 테스트용
+  if(SELLER.provider === "none"){
+    if(/^MAX-/i.test(key)) return {ok:true, plan:"max"};
+    if(/^PRO-/i.test(key)) return {ok:true, plan:"pro"};
+    return {ok:false, msg:"데모 키는 PRO- 또는 MAX- 로 시작해야 합니다"};
+  }
+  try{
+    if(SELLER.provider === "gumroad"){
+      for(const [plan,pid] of [["max",SELLER.gumroad.maxProductId],["pro",SELLER.gumroad.proProductId]]){
+        if(!pid) continue;
+        const r=await fetch("https://api.gumroad.com/v2/licenses/verify",{method:"POST",
+          headers:{"Content-Type":"application/x-www-form-urlencoded"},
+          body:new URLSearchParams({product_id:pid,license_key:key})});
+        const d=await r.json();
+        if(d && d.success) return {ok:true, plan};
+      }
+      return {ok:false, msg:"유효하지 않은 키"};
+    }
+    if(SELLER.provider === "lemonsqueezy"){
+      const r=await fetch("https://api.lemonsqueezy.com/v1/licenses/validate",{method:"POST",
+        headers:{"Accept":"application/json","Content-Type":"application/json"},
+        body:JSON.stringify({license_key:key})});
+      const d=await r.json();
+      if(d && d.valid){
+        const sid=String(d.meta && d.meta.store_id||"");
+        const plan = sid && sid===String(SELLER.lemon.maxStoreId) ? "max" : "pro";
+        return {ok:true, plan};
+      }
+      return {ok:false, msg:"유효하지 않은 키"};
+    }
+  }catch(e){ console.log("license",e); return {ok:false, msg:"검증 네트워크 오류"}; }
+  return {ok:false, msg:"검증 실패"};
+}
 
 function toast(m,err){const t=document.getElementById("toast");t.textContent=m;
   t.className="toast show"+(err?" err":"");setTimeout(()=>t.className="toast",1700);}
@@ -417,7 +522,57 @@ document.querySelectorAll(".chip[data-f]").forEach(ch=>ch.onclick=()=>{
   ch.classList.add("active");fKind=ch.dataset.f;render();});
 
 // 설정 시트
+// ---- 플랜/카테고리 UI ----
+function applyPlanUI(){
+  const plan=currentPlan();
+  document.getElementById("adBanner").style.display = isPaid()?"none":"block";
+  const badge=document.getElementById("planBadge");
+  if(badge){ badge.textContent="현재: "+(PLAN_LABEL[plan]||plan)+"  (카테고리 최대 "+catLimit()+"개)";
+    badge.style.color = plan==="max"?"#ffd479":plan==="pro"?"var(--accent)":"var(--muted)"; }
+  const bp=document.getElementById("buyPro"), bm=document.getElementById("buyMax");
+  if(bp){ bp.href=SELLER.checkout.pro||"#"; bp.style.display=SELLER.checkout.pro?"":"none"; }
+  if(bm){ bm.href=SELLER.checkout.max||"#"; bm.style.display=SELLER.checkout.max?"":"none"; }
+}
+function renderCatEditor(){
+  const box=document.getElementById("catEditor"); if(!box) return;
+  const cats=CFG.categories||[];
+  document.getElementById("catCount").textContent=cats.length;
+  document.getElementById("catMax").textContent=catLimit();
+  box.innerHTML=cats.map((c,i)=>`<div style="margin-bottom:10px;padding:8px;border:1px solid var(--line);border-radius:10px">
+     <div class="row" style="gap:6px;align-items:center">
+       <input value="${escAttr(c.name)}" oninput="editCat(${i},'name',this.value)" placeholder="카테고리명" style="flex:1">
+       <button class="btn sm" onclick="removeCat(${i})">삭제</button>
+     </div>
+     <input value="${escAttr(c.desc||'')}" oninput="editCat(${i},'desc',this.value)" placeholder="세부 주제 설명" style="width:100%;margin-top:5px">
+   </div>`).join("")
+     || `<div class="hint">아직 카테고리가 없습니다. 아래에서 추가하세요(비우면 기본 3개로 동작).</div>`;
+}
+function escAttr(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+function editCat(i,field,val){ if(CFG.categories&&CFG.categories[i]){CFG.categories[i][field]=val; saveCfg();} }
+function removeCat(i){ (CFG.categories||[]).splice(i,1); saveCfg(); renderCatEditor(); }
+document.getElementById("catAdd").onclick=()=>{
+  const name=document.getElementById("newCatName").value.trim();
+  const desc=document.getElementById("newCatDesc").value.trim();
+  if(!name){toast("카테고리명을 입력하세요",1);return;}
+  CFG.categories=CFG.categories||[];
+  if(CFG.categories.length>=catLimit()){
+    toast(PLAN_LABEL[currentPlan()]+"은 카테고리 "+catLimit()+"개까지예요",1);return;}
+  CFG.categories.push({name, desc: desc||name+" 관련 주제"});
+  document.getElementById("newCatName").value=""; document.getElementById("newCatDesc").value="";
+  saveCfg(); renderCatEditor();
+};
+document.getElementById("licVerify").onclick=async()=>{
+  const key=document.getElementById("cfgLicense").value.trim();
+  const res=await verifyLicense(key);
+  if(res.ok){
+    CFG.plan=res.plan; CFG.license=key; saveCfg(); applyPlanUI(); renderCatEditor();
+    toast(PLAN_LABEL[res.plan]+" 활성화 ✓");
+  }else{ toast(res.msg||"확인 실패",1); }
+};
+
 function openSheet(){
+  document.getElementById("cfgLicense").value=CFG.license||"";
+  applyPlanUI(); renderCatEditor();
   document.getElementById("cfgData").value=CFG.dataUrl||"";
   document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
   document.getElementById("cfgGhRepo").value=CFG.ghRepo||"";
@@ -450,6 +605,13 @@ document.getElementById("reload").onclick=()=>loadData(true);
 // ▶ 폰에서 워크플로 실행 + 진행률 링 + 완료 시 자동 새로고침
 const WF="daily-blog.yml", RING_LEN=119.4;
 let RUNNING=false;
+// 실행 시 워크플로에 전달할 입력값(이미지 여부 + 내 카테고리를 플랜 한도까지)
+function runInputs(withImg){
+  const inp={images: withImg?"true":"false"};
+  const cats=(CFG.categories||[]).slice(0,catLimit());
+  if(cats.length) inp.categories=JSON.stringify(cats);
+  return inp;
+}
 function ghHeaders(){return {"Authorization":"Bearer "+CFG.ghToken,
   "Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};}
 function ghGet(path){return fetch("https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo+path,
@@ -463,7 +625,7 @@ function setRunning(on){
   RUNNING=on;
   const w=document.getElementById("runWrap");
   w.classList.toggle("running",on);
-  document.getElementById("runBtn").textContent=on?"⏸":"▶";
+  document.getElementById("runBtn").textContent="▶";  // 실행 중에도 재생 모양 유지(펄스로 진행 표시)
 }
 function stepProgress(jobs){
   // 전체 단계 중 완료 비율(진행 중 단계는 절반으로 가중)
@@ -484,7 +646,7 @@ document.getElementById("runBtn").onclick=async()=>{
   try{
     const r=await fetch("https://api.github.com/repos/"+CFG.ghOwner+"/"+CFG.ghRepo
       +"/actions/workflows/"+WF+"/dispatches",
-      {method:"POST",headers:ghHeaders(),body:JSON.stringify({ref:"main",inputs:{images:withImg?"true":"false"}})});
+      {method:"POST",headers:ghHeaders(),body:JSON.stringify({ref:"main",inputs:runInputs(withImg)})});
     if(r.status!==204){const t=await r.text();console.log(t);
       toast("실행 실패 "+r.status+" (토큰 권한 확인)",1);return;}
   }catch(e){console.log(e);toast("실행 실패(네트워크)",1);return;}
@@ -552,8 +714,24 @@ async function openStats(){
 }
 function closeStats(){document.getElementById("statsBg").classList.remove("open");
   document.getElementById("statsSheet").classList.remove("open");}
+const FREE_DAILY=1000; // flash-lite 무료 하루 한도(대략)
+function computeQuota(arts){
+  const box=document.getElementById("quotaBox"); if(!box) return;
+  const nArts=arts.length;
+  const nCats=(DATA&&DATA.categories?DATA.categories.length:[...new Set(arts.map(a=>a.category))].length)||1;
+  // 이번 실행 추정 호출수: 글당 약 1.5회 + 카테고리당 약 4회(주제·판별) + 사전점검 1
+  const est=Math.max(1, Math.round(nArts*1.5 + nCats*4 + 1));
+  const pct=Math.min(100, Math.round(est/FREE_DAILY*100));
+  document.getElementById("quotaBar").style.width=pct+"%";
+  document.getElementById("quotaBar").style.background = pct>80?"var(--danger)":pct>50?"var(--warn)":"var(--accent)";
+  box.innerHTML=`이번 실행 추정 호출: <b style="color:var(--txt)">약 ${est}회</b> / 무료 하루 ~${FREE_DAILY.toLocaleString()}회 (${pct}%)`
+    + (est>FREE_DAILY?`<br><span style="color:var(--danger)">⚠ 한도 초과 위험 — 카테고리를 줄이거나 이미지를 끄세요</span>`
+       : `<br>여유 있음. 하루 여러 번 실행하면 합산되니 주의.`);
+}
+
 function computeStats(){
   const arts=DATA?.articles||[];
+  computeQuota(arts);
   const perCatToday={}; arts.forEach(a=>{if(a.category)perCatToday[a.category]=(perCatToday[a.category]||0)+1});
   const cum = HISTCOUNTS?HISTCOUNTS.byCat:perCatToday;
   const totalPosts = HISTCOUNTS?HISTCOUNTS.total:(DATA?.total_all||arts.length);
@@ -628,6 +806,7 @@ if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 }
 
+applyPlanUI();
 loadData();
 </script>
 </body>
