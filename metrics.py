@@ -92,7 +92,7 @@ def _apply_naver(items, ncfg):
                 it["volume"] = m["volume"]
                 it["competition"] = m["comp"]
                 it["metric_source"] = "naver"
-        time.sleep(0.3)  # rate limit 여유
+        time.sleep(0.15)  # rate limit 여유(축소)
 
 
 # ---------------------------------------------------------------------------
