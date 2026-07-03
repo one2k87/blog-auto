@@ -65,7 +65,8 @@ cfg = {
     "llm": {
         "provider": envs("LLM_PROVIDER", "gemini"),
         "api_key": envs("LLM_API_KEY", ""),
-        "model": envs("LLM_MODEL", "gemini-2.5-flash"),
+        # 무료 등급: 2.5-flash 는 하루 20회로 축소됨 → flash-lite(하루 ~1,000회)를 기본값으로
+        "model": envs("LLM_MODEL", "gemini-2.5-flash-lite"),
     },
     "metrics": {
         "provider": envs("METRICS_PROVIDER", "naver"),
