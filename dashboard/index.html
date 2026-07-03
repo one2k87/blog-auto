@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AdSense 자동 블로그</title>
+
+<!-- PWA / 아이폰 홈화면 설치 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="블로그자동화">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<style>
+  :root{
+    --bg:#0f1115; --card:#181b22; --card2:#1f232c; --line:#2a2f3a;
+    --txt:#e7e9ee; --muted:#9aa3b2; --hot:#ff6b4a; --niche:#4aa3ff;
+    --ok:#33c27f; --warn:#f0b429; --accent:#7c5cff; --danger:#ff5a6e;
+    --safe-t:env(safe-area-inset-top); --safe-b:env(safe-area-inset-bottom);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI",sans-serif;
+    padding-bottom:calc(72px + var(--safe-b));}
+  header{position:sticky;top:0;z-index:20;background:rgba(15,17,21,.92);
+    backdrop-filter:saturate(140%) blur(8px);border-bottom:1px solid var(--line);
+    padding:calc(12px + var(--safe-t)) 16px 12px;display:flex;align-items:center;gap:12px}
+  h1{font-size:16px;margin:0;font-weight:700;line-height:1.2}
+  .sub{color:var(--muted);font-size:11px;margin-top:2px}
+  .spacer{flex:1}
+  .icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);
+    background:var(--card2);color:var(--txt);font-size:17px;display:grid;place-items:center;cursor:pointer}
+  .btn{background:var(--card2);color:var(--txt);border:1px solid var(--line);
+    padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:var(--accent);border-color:var(--accent)}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#06281a}
+  .btn.sm{padding:7px 11px;font-size:12px}
+
+  .filters{display:flex;gap:8px;padding:12px 16px 4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .filters::-webkit-scrollbar{display:none}
+  .chip{padding:7px 13px;border-radius:20px;border:1px solid var(--line);white-space:nowrap;
+    background:var(--card);cursor:pointer;font-size:13px;color:var(--muted);flex:0 0 auto}
+  .chip.active{color:#fff;border-color:var(--accent);background:#241f3d}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;padding:12px 16px 24px}
+  @media(min-width:760px){.grid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:15px;display:flex;flex-direction:column;gap:9px}
+  .row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+  .b-hot{background:rgba(255,107,74,.15);color:var(--hot)}
+  .b-niche{background:rgba(74,163,255,.15);color:var(--niche)}
+  .b-lang{background:rgba(124,92,255,.15);color:#b3a4ff}
+  .b-ok{background:rgba(51,194,127,.13);color:var(--ok)}
+  .b-wait{background:rgba(240,180,41,.14);color:var(--warn)}
+  .b-err{background:rgba(255,90,110,.15);color:var(--danger)}
+  .b-cat{background:rgba(120,130,150,.18);color:#c7cede}
+  .chip.cat.active{border-color:#7c5cff;background:#241f3d;color:#fff}
+  .kw{font-size:12px;color:var(--muted)}
+  .metrics{display:flex;gap:6px;flex-wrap:wrap}
+  .mchip{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;
+    background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+  .mchip b{color:var(--txt)}
+  .m-vol b{color:#ffd479}
+  .m-steady b{color:var(--ok)}
+  .title{font-size:16px;font-weight:700;line-height:1.4}
+  .meta{font-size:13px;color:var(--muted);line-height:1.55}
+  .tags{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:11px;color:var(--muted);background:var(--card2);padding:3px 8px;border-radius:5px}
+  .links a{color:var(--niche);font-size:12px;text-decoration:none;display:block;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .actions{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap}
+  .preview{display:none;border-top:1px solid var(--line);padding-top:10px;margin-top:2px;
+    max-height:340px;overflow:auto;font-size:13px;line-height:1.65;color:#cdd2db}
+  .preview.open{display:block}
+  .preview h1,.preview h2,.preview h3{color:#fff;font-size:15px;margin:10px 0 6px}
+
+  .empty{padding:48px 24px;text-align:center;color:var(--muted);line-height:1.7}
+  .empty code{background:var(--card2);padding:2px 7px;border-radius:5px;color:#fff}
+
+  /* 설정 시트 */
+  .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none}
+  .sheet-bg.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);
+    border-radius:18px 18px 0 0;border-top:1px solid var(--line);
+    padding:18px 18px calc(22px + var(--safe-b));transform:translateY(100%);
+    transition:.28s;max-height:88vh;overflow:auto}
+  .sheet.open{transform:translateY(0)}
+  .sheet h2{font-size:16px;margin:4px 0 14px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  .field input,.field select{width:100%;padding:11px 12px;border-radius:10px;
+    border:1px solid var(--line);background:var(--card2);color:var(--txt);font-size:14px}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .divider{height:1px;background:var(--line);margin:16px 0}
+
+  .install-bar{margin:12px 16px 0;padding:12px 14px;background:#241f3d;
+    border:1px solid var(--accent);border-radius:12px;font-size:13px;line-height:1.55;display:none}
+  .install-bar b{color:#b3a4ff}
+
+  .toast{position:fixed;bottom:calc(24px + var(--safe-b));left:50%;transform:translateX(-50%);
+    background:var(--ok);color:#06281a;padding:11px 18px;border-radius:12px;font-weight:700;
+    z-index:60;opacity:0;transition:.25s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  .toast.err{background:var(--danger);color:#fff}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🚀 자동 블로그</h1>
+    <div class="sub" id="genat">로드 중…</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="runBtn" title="지금 생성 실행">▶</button>
+  <button class="icon-btn" id="reload" title="새로고침">↻</button>
+  <button class="icon-btn" id="gear" title="설정">⚙️</button>
+</header>
+
+<div class="install-bar" id="installBar">
+  📲 <b>홈 화면에 설치</b>하면 앱처럼 쓸 수 있어요. 사파리 하단 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>.
+</div>
+
+<div class="filters" id="catFilters"></div>
+<div class="filters">
+  <span class="chip active" data-f="all">전체 <b id="c-all">0</b></span>
+  <span class="chip" data-f="long">🎯 저경쟁 롱테일 <b id="c-long">0</b></span>
+  <span class="chip" data-f="season">🗓️ 시즌 선점 <b id="c-season">0</b></span>
+</div>
+
+<div id="grid" class="grid"></div>
+<div id="empty" class="empty" style="display:none"></div>
+
+<!-- 설정 시트 -->
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet">
+  <h2>⚙️ 설정</h2>
+
+  <div class="field">
+    <label>데이터 주소 (latest.json URL)</label>
+    <input id="cfgData" placeholder="https://USER.github.io/REPO/data/latest.json">
+    <div class="hint">클라우드(GitHub Pages 등)에 올린 결과 파일 주소. 비워두면 같은 폴더의 data/latest.json 을 읽습니다.</div>
+  </div>
+
+  <div class="divider"></div>
+  <h2 style="font-size:14px">▶ 폰에서 생성 실행 (GitHub)</h2>
+  <div class="field">
+    <label>GitHub 사용자명 (owner)</label>
+    <input id="cfgGhOwner" placeholder="myid" autocapitalize="off">
+  </div>
+  <div class="field">
+    <label>저장소 이름 (repo)</label>
+    <input id="cfgGhRepo" placeholder="blog-auto" autocapitalize="off">
+  </div>
+  <div class="field">
+    <label>액세스 토큰 (fine-grained PAT · Actions 쓰기)</label>
+    <input id="cfgGhToken" placeholder="github_pat_..." autocapitalize="off">
+    <div class="hint">github.com → Settings → Developer settings → Fine-grained tokens.
+      이 저장소의 Actions(Read/Write) 권한만 주세요. 이 기기에만 저장됩니다.</div>
+  </div>
+
+  <div class="divider"></div>
+  <h2 style="font-size:14px">📝 워드프레스 (폰에서 직접 게시)</h2>
+  <div class="field">
+    <label>사이트 주소</label>
+    <input id="cfgSite" placeholder="https://내블로그.com">
+  </div>
+  <div class="field">
+    <label>아이디</label>
+    <input id="cfgUser" placeholder="wp_id" autocapitalize="off">
+  </div>
+  <div class="field">
+    <label>응용 프로그램 비밀번호</label>
+    <input id="cfgPass" placeholder="abcd efgh ijkl mnop" autocapitalize="off">
+    <div class="hint">워드프레스 관리자 → 사용자 → 프로필 → 응용 프로그램 비밀번호에서 발급.</div>
+  </div>
+  <div class="field">
+    <label>게시 방식</label>
+    <select id="cfgStatus">
+      <option value="draft">임시저장 (검토 후 발행 · 안전)</option>
+      <option value="publish">즉시 발행</option>
+    </select>
+  </div>
+  <div class="hint">입력값은 이 기기에만 저장됩니다(localStorage). 공용 기기에서는 사용에 주의하세요.</div>
+
+  <div class="divider"></div>
+  <div class="actions">
+    <button class="btn primary" id="cfgSave" style="flex:1">저장</button>
+    <button class="btn" id="cfgClose">닫기</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LS="adsense_blog_cfg";
+let DATA=null, fKind="all", fLang="all", fCat="all";
+let CFG=loadCfg();
+
+function loadCfg(){try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return {}}}
+function saveCfg(){localStorage.setItem(LS,JSON.stringify(CFG))}
+
+function toast(m,err){const t=document.getElementById("toast");t.textContent=m;
+  t.className="toast show"+(err?" err":"");setTimeout(()=>t.className="toast",1700);}
+
+const SAMPLE={generated_at:"2026-07-03T07:00:00",categories:["금융/재테크","건강/생활","경제/IT"],auto_publish:false,total_all:3,articles:[
+  {kind:"long",category:"금융/재테크",keyword:"무직자 소액 비상금 대출 조건",status:"복붙대기",post_url:"",
+   volume:2400,competition:"낮음",steadiness:0.86,slug:"unemployed-emergency-loan",
+   title:"무직자 소액 비상금 대출 조건 총정리 (한도·금리·필요서류)",
+   meta:"무직자도 받을 수 있는 소액 비상금 대출의 조건, 한도, 금리, 필요 서류를 표로 정리했습니다.",
+   tags:["무직자대출","비상금대출","소액대출","대출조건","서민금융"],
+   links:[{title:"서민금융진흥원",url:"https://www.kinfa.or.kr"}],
+   html:"<p class='hook' style='font-size:17px;font-weight:600'>갑자기 목돈이 필요한데 소득 증빙이 어렵다면 어떻게 해야 할까요?</p><h2>무직자 비상금 대출 조건</h2><p>소액·단기 상품 위주로 접근해야 합니다.</p><div class='ad-slot' style='margin:26px 0;padding:14px;border:1px dashed #d8dbe0;text-align:center'>더 자세한 내용은 아래에서 이어서 확인해보세요.<div>[ 광고 자리 ]</div></div><h2>한도와 금리</h2><p>상품별로 다릅니다.</p>"},
+  {kind:"season",category:"건강/생활",keyword:"환절기 비염 예방법",status:"복붙대기",post_url:"",
+   volume:3300,competition:"낮음",steadiness:0.62,slug:"seasonal-rhinitis",series_part:1,series_total:2,
+   title:"[1편] 환절기 비염 예방법: 미리 준비하는 생활 습관",
+   meta:"환절기 알레르기 비염이 심해지기 전에 미리 준비하는 생활 습관과 예방법을 정리했습니다.",
+   tags:["비염","환절기","알레르기","예방법","건강습관"],
+   links:[{title:"질병관리청",url:"https://www.kdca.go.kr"}],
+   html:"<p class='hook' style='font-size:17px;font-weight:600'>환절기만 되면 코가 막히고 재채기가 멈추지 않나요?</p><nav class='series-nav' style='background:#f6f4ff;padding:8px'>📚 시리즈: <strong>1편(현재)</strong> · <a href='#'>2편</a></nav><h2>비염이 심해지는 시기</h2><p>일교차가 커지는 환절기입니다.</p>"},
+  {kind:"long",category:"경제/IT",keyword:"챗GPT 엑셀 함수 자동 작성법",status:"복붙대기",post_url:"",
+   volume:1800,competition:"낮음",steadiness:0.8,slug:"chatgpt-excel-formula",
+   title:"챗GPT로 엑셀 함수 자동 작성하는 법 (실무 예시 5가지)",
+   meta:"복잡한 엑셀 함수, 챗GPT에게 시키는 방법을 실무 예시와 함께 단계별로 정리했습니다.",
+   tags:["챗GPT","엑셀","함수","자동화","생산성"],
+   links:[{title:"Microsoft 지원",url:"https://support.microsoft.com"}],
+   html:"<p class='hook' style='font-size:17px;font-weight:600'>엑셀 함수 짜다가 막힌 적 있으신가요?</p><h2>기본 사용법</h2><p>원하는 결과를 문장으로 설명하면 됩니다.</p>"}
+]};
+
+function htmlToText(h){const d=document.createElement("div");d.innerHTML=h;return (d.innerText||"").trim();}
+async function clip(t,msg){try{await navigator.clipboard.writeText(t);toast(msg);}
+  catch(e){const ta=document.createElement("textarea");ta.value=t;document.body.appendChild(ta);
+    ta.select();document.execCommand("copy");ta.remove();toast(msg);}}
+
+function visible(){return (DATA?.articles||[]).filter(a=>
+  (fKind==="all"||a.kind===fKind)&&(fCat==="all"||a.category===fCat));}
+
+function renderCatFilters(){
+  const cats=[...new Set((DATA?.articles||[]).map(a=>a.category).filter(Boolean))];
+  const box=document.getElementById("catFilters");
+  if(!cats.length){box.innerHTML="";return;}
+  box.innerHTML=`<span class="chip cat ${fCat==="all"?"active":""}" data-c="all">📂 전체 카테고리</span>`+
+    cats.map(c=>`<span class="chip cat ${fCat===c?"active":""}" data-c="${c}">${c} <b>${(DATA.articles||[]).filter(a=>a.category===c).length}</b></span>`).join("");
+  box.querySelectorAll(".chip[data-c]").forEach(ch=>ch.onclick=()=>{fCat=ch.dataset.c;render();});
+}
+
+function fmt(n){return (n||0).toLocaleString();}
+function metricLine(a){
+  const chips=[];
+  if(a.volume!=null) chips.push(`<span class="mchip m-vol">📊 월검색 <b>${fmt(a.volume)}</b></span>`);
+  else if(a.interest!=null) chips.push(`<span class="mchip m-vol">📈 관심도 <b>${a.interest}</b>/100</span>`);
+  if(a.competition) chips.push(`<span class="mchip">경쟁도 <b>${a.competition}</b></span>`);
+  if(a.steadiness!=null) chips.push(`<span class="mchip m-steady">🔁 꾸준함 <b>${Math.round(a.steadiness*100)}%</b></span>`);
+  return chips.length?`<div class="metrics">${chips.join("")}</div>`:"";
+}
+
+function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
+function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
+function togglePrev(i){document.getElementById("prev-"+i).classList.toggle("open");}
+
+async function publish(i,btn){
+  const a=visible()[i];
+  if(!CFG.site||!CFG.user||!CFG.pass){toast("설정에서 워드프레스 정보를 먼저 입력하세요",1);openSheet();return;}
+  btn.textContent="게시 중…";btn.disabled=true;
+  try{
+    const base=CFG.site.replace(/\/+$/,"");
+    const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
+    const r=await fetch(base+"/wp-json/wp/v2/posts",{
+      method:"POST",headers:{"Content-Type":"application/json","Authorization":auth},
+      body:JSON.stringify({title:a.title,content:a.html,excerpt:a.meta||"",
+        slug:a.slug||"",status:CFG.status||"draft"})});
+    if(r.ok){const d=await r.json();a.status="게시됨";a.post_url=d.link||"";
+      toast("게시 완료 ✓");render();}
+    else{const t=await r.text();console.log(t);toast("게시 실패 "+r.status,1);
+      btn.textContent="게시 재시도";btn.disabled=false;}
+  }catch(e){console.log(e);
+    toast("게시 실패(CORS/네트워크). README의 CORS 안내 참고",1);
+    btn.textContent="게시 재시도";btn.disabled=false;}
+}
+
+function render(){
+  const arts=DATA?.articles||[];
+  renderCatFilters();
+  c("c-all",arts.length);c("c-long",arts.filter(a=>a.kind==="long").length);
+  c("c-season",arts.filter(a=>a.kind==="season").length);
+  const cats=(DATA&&DATA.categories)?DATA.categories.length:[...new Set(arts.map(a=>a.category))].length;
+  document.getElementById("genat").textContent=DATA?
+    ("📂 카테고리 "+cats+"개 · 생성 "+new Date(DATA.generated_at).toLocaleString("ko-KR")
+     +(DATA.total_all?" · 누적 "+DATA.total_all+"편":"")):"";
+  const list=visible(),grid=document.getElementById("grid"),empty=document.getElementById("empty");
+  if(!list.length){grid.innerHTML="";empty.style.display="block";
+    empty.innerHTML=arts.length?"이 필터에 해당하는 글이 없습니다.":
+      "아직 데이터가 없습니다.<br><br>클라우드 자동화(GitHub Actions)가 매일 7시에<br><code>data/latest.json</code> 을 갱신하면 여기 표시됩니다.<br>설정 ⚙️ 에서 데이터 주소를 넣어보세요.";return;}
+  empty.style.display="none";
+  grid.innerHTML=list.map((a,i)=>{
+    const pub=a.status==="게시됨";
+    const sCls=pub?"b-ok":(a.status==="게시실패"?"b-err":"b-wait");
+    const links=(a.links||[]).map(l=>`<a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.title||l.url}</a>`).join("");
+    return `<div class="card">
+      <div class="row">
+        ${a.category?`<span class="badge b-cat">📂 ${a.category}</span>`:""}
+        <span class="badge ${a.kind==="season"?"b-hot":"b-niche"}">${a.kind==="season"?"🗓️ 시즌 선점":"🎯 저경쟁 롱테일"}</span>
+        ${a.series_part?`<span class="badge b-lang">📚 시리즈 ${a.series_part}/${a.series_total}</span>`:""}
+        <span class="badge ${sCls}">${a.status}</span>
+        ${pub&&a.post_url?`<a class="badge b-ok" href="${a.post_url}" target="_blank">글 보기 ↗</a>`:""}
+      </div>
+      <div class="kw">🔑 ${a.focus_keyword||a.keyword}${a.slug?` · /${a.slug}`:""}</div>
+      ${metricLine(a)}
+      <div class="title">${a.title}</div>
+      <div class="meta">${a.meta||""}</div>
+      <div class="tags">${(a.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join("")}</div>
+      <div class="links">${links}</div>
+      <div class="actions">
+        ${pub?"":`<button class="btn ok sm" onclick="publish(${i},this)">📤 게시</button>`}
+        <button class="btn primary sm" onclick="copyHtml(${i})">📋 HTML</button>
+        <button class="btn sm" onclick="copyText(${i})">텍스트</button>
+        <button class="btn sm" onclick="togglePrev(${i})">미리보기</button>
+      </div>
+      <div class="preview" id="prev-${i}">${a.html}</div>
+    </div>`;}).join("");
+}
+function c(id,v){document.getElementById(id).textContent=v;}
+
+// 필터
+document.querySelectorAll(".chip[data-f]").forEach(ch=>ch.onclick=()=>{
+  document.querySelectorAll(".chip[data-f]").forEach(x=>x.classList.remove("active"));
+  ch.classList.add("active");fKind=ch.dataset.f;render();});
+
+// 설정 시트
+function openSheet(){
+  document.getElementById("cfgData").value=CFG.dataUrl||"";
+  document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
+  document.getElementById("cfgGhRepo").value=CFG.ghRepo||"";
+  document.getElementById("cfgGhToken").value=CFG.ghToken||"";
+  document.getElementById("cfgSite").value=CFG.site||"";
+  document.getElementById("cfgUser").value=CFG.user||"";
+  document.getElementById("cfgPass").value=CFG.pass||"";
+  document.getElementById("cfgStatus").value=CFG.status||"draft";
+  document.getElementById("sheetBg").classList.add("open");
+  document.getElementById("sheet").classList.add("open");}
+function closeSheet(){document.getElementById("sheetBg").classList.remove("open");
+  document.getElementById("sheet").classList.remove("open");}
+document.getElementById("gear").onclick=openSheet;
+document.getElementById("sheetBg").onclick=closeSheet;
+document.getElementById("cfgClose").onclick=closeSheet;
+document.getElementById("cfgSave").onclick=()=>{
+  CFG.dataUrl=document.getElementById("cfgData").value.trim();
+  CFG.ghOwner=document.getElementById("cfgGhOwner").value.trim();
+  CFG.ghRepo=document.getElementById("cfgGhRepo").value.trim();
+  CFG.ghToken=document.getElementById("cfgGhToken").value.trim();
+  CFG.site=document.getElementById("cfgSite").value.trim();
+  CFG.user=document.getElementById("cfgUser").value.trim();
+  CFG.pass=document.getElementById("cfgPass").value.trim();
+  CFG.status=document.getElementById("cfgStatus").value;
+  saveCfg();closeSheet();toast("저장됨 ✓");loadData();};
+document.getElementById("reload").onclick=()=>loadData(true);
+
+// ▶ 폰에서 워크플로 수동 실행 (GitHub Actions workflow_dispatch)
+document.getElementById("runBtn").onclick=async()=>{
+  if(!CFG.ghOwner||!CFG.ghRepo||!CFG.ghToken){
+    toast("설정에서 GitHub 정보를 먼저 입력하세요",1);openSheet();return;}
+  if(!confirm("지금 글 생성을 실행할까요? (몇 분 소요)"))return;
+  const wf="daily-blog.yml";
+  const url=`https://api.github.com/repos/${CFG.ghOwner}/${CFG.ghRepo}/actions/workflows/${wf}/dispatches`;
+  try{
+    const r=await fetch(url,{method:"POST",
+      headers:{"Authorization":"Bearer "+CFG.ghToken,"Accept":"application/vnd.github+json",
+               "X-GitHub-Api-Version":"2022-11-28"},
+      body:JSON.stringify({ref:"main"})});
+    if(r.status===204){toast("실행 시작됨 ✓ 몇 분 뒤 ↻ 새로고침");}
+    else{const t=await r.text();console.log(t);
+      toast("실행 실패 "+r.status+" (토큰 권한 확인)",1);}
+  }catch(e){console.log(e);toast("실행 실패(네트워크)",1);}
+};
+
+// 데이터 로드
+async function loadData(force){
+  const url=(CFG.dataUrl&&CFG.dataUrl.length)?CFG.dataUrl:"./data/latest.json";
+  try{const r=await fetch(url,{cache:force?"reload":"no-store"});
+    if(r.ok){DATA=await r.json();render();return;}}catch(e){}
+  DATA=SAMPLE;render();
+  toast("샘플 표시 중 — 설정에서 데이터 주소를 넣으세요");}
+
+// iOS 설치 안내 (홈화면 미설치 + 사파리일 때만)
+(function(){
+  const standalone=window.navigator.standalone||window.matchMedia("(display-mode: standalone)").matches;
+  const iOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(iOS&&!standalone){document.getElementById("installBar").style.display="block";}
+})();
+
+// 서비스워커 등록
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+
+loadData();
+</script>
+</body>
+</html>

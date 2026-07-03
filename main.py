@@ -1,0 +1,289 @@
+"""
+main.py - 카테고리 집중 애드센스 수익형 파이프라인 (한국어 전용).
+
+하루 흐름:
+1) 히스토리(과거 발행 제목) 로드 → 중복 방지용
+2) 선택한 고단가 카테고리 안에서 주제 생성
+     long   = 저경쟁 롱테일 (상위노출 쉬움)
+     season = 시즌/이벤트 선점 (2~4주 미리)
+3) (옵션) 네이버 검색량 실측으로 저경쟁 후보 선별
+4) 각 주제로 수익형 글 생성 (이전 글로 내부링크 → 카테고리 클러스터)
+5) (옵션) WordPress 게시 / 복붙 HTML 저장
+6) 히스토리 갱신 + 구글시트 로깅 + 대시보드 데이터 저장
+
+실행: python main.py   설정: config.json
+"""
+
+import os
+import json
+import html as html_mod
+from datetime import datetime
+
+import random
+import topics
+import metrics
+import images
+from llm import chat
+from generator import generate_article, generate_series
+from publisher import publish_to_wordpress, upload_media
+from sheets import log_rows
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+OUT_DIR = os.path.join(BASE, "output")
+DASH_DATA = os.path.join(BASE, "dashboard", "data")
+HISTORY = os.path.join(DASH_DATA, "history.json")
+
+
+def load_config():
+    path = os.path.join(BASE, "config.json")
+    if not os.path.exists(path):
+        raise SystemExit("config.json 이 없습니다. config.example.json 을 복사해 만드세요.")
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_history():
+    if os.path.exists(HISTORY):
+        try:
+            with open(HISTORY, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"articles": []}   # [{title, slug, url, kind, keyword, date}]
+
+
+def save_history(hist):
+    os.makedirs(DASH_DATA, exist_ok=True)
+    with open(HISTORY, "w", encoding="utf-8") as f:
+        json.dump(hist, f, ensure_ascii=False, indent=2)
+
+
+def get_categories(cfg):
+    """config에서 카테고리 목록을 만든다(구버전 site.category 호환)."""
+    if cfg.get("categories"):
+        return [{"name": c.get("name", ""), "desc": c.get("desc", "")} for c in cfg["categories"]]
+    site = cfg.get("site", {})
+    return [{"name": site.get("category", ""), "desc": site.get("category_desc", "")}]
+
+
+def collect_lane(cfg, cat, lane, n_slots, exclude):
+    """
+    한 카테고리(cat) 안에서 한 갈래(lane)의 주제를 n_slots개 확보한다.
+      1) 후보 생성 → 2) 저경쟁/시즌 지속 판별 → 3) long은 네이버 실측 선별
+    """
+    mcfg = cfg.get("metrics", {}) or {}
+    measured = mcfg.get("provider", "none") not in ("none", None)
+    pool = max(3, n_slots + 2)
+
+    raw = chat(topics.build_topic_prompt(cat["name"], cat["desc"], lane, pool, exclude=exclude),
+               cfg["llm"], max_tokens=900, temperature=0.9)
+    cand = topics.parse_topics(raw, pool)
+
+    print(f"  · 주제 판별(저경쟁/시즌) 중…")
+    topics.classify_topics(cand, cat["name"], chat, cfg["llm"])
+    match = [c for c in cand if c.get("lane_ai") == lane]
+    ordered = match + [c for c in cand if c.get("lane_ai") != lane]  # 부족하면 나머지로 보충
+
+    # 3) long은 네이버 실측으로 선별
+    if lane == "long" and measured:
+        print(f"  · 저경쟁 후보 검색량 측정(네이버)…")
+        metrics.enrich(ordered, mcfg, geo="KR", want_steadiness=True)
+        floor, ceil = mcfg.get("low_volume_floor", 100), mcfg.get("low_volume_ceil", 8000)
+
+        def v(x):
+            return x.get("volume") if x.get("volume") is not None else (x.get("interest") or 0)
+
+        def band(x):
+            vv = x.get("volume")
+            return True if vv is None else (floor <= vv <= ceil)
+
+        comp_rank = {"낮음": 0, "중간": 1, "높음": 2, "": 1}
+        picked = [x for x in ordered if band(x)]
+        picked.sort(key=lambda x: (comp_rank.get(str(x.get("competition", "")), 1),
+                                   -(x.get("steadiness") or 0), -v(x)))
+        ordered = picked or ordered
+
+    return ordered[:n_slots]
+
+
+def make_image_resolver(cfg, auto_publish, category=""):
+    """[[IMG:설명]] → 실제 이미지 자동 생성 후 <figure> 반환하는 콜백(카테고리별)."""
+    imgcfg = dict(cfg.get("images", {}) or {})
+    if imgcfg.get("provider") in ("gemini", "imagen", "google") and not imgcfg.get("api_key"):
+        imgcfg["api_key"] = cfg["llm"].get("api_key", "")   # Gemini 키 재사용
+    wp_cfg = cfg.get("wordpress", {})
+    out = os.path.join(OUT_DIR, "images")
+
+    if imgcfg.get("provider", "none") in ("none", None, ""):
+        return None
+
+    def resolver(desc, idx):
+        path = images.generate_image(desc, imgcfg, out, idx, category=category)
+        if not path:
+            return None
+        src = None
+        if auto_publish and wp_cfg.get("enabled"):
+            src = upload_media(path, wp_cfg, alt=desc)
+        if not src:
+            src = images.to_data_uri(path)     # 미게시/업로드 실패 시 인라인
+        return images.figure_html(src, desc)
+
+    return resolver
+
+
+def save_copy_html(article):
+    os.makedirs(OUT_DIR, exist_ok=True)
+    safe = "".join(c for c in article["keyword"][:40] if c.isalnum() or c in " _-").strip()
+    cat = "".join(c for c in article.get("category", "")[:10] if c.isalnum())
+    fname = f"{datetime.now():%Y%m%d}_{cat}_{article['kind']}_{safe}.html"
+    path = os.path.join(OUT_DIR, fname)
+    doc = (f'<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+           f'<title>{html_mod.escape(article["title"])}</title>'
+           f'<meta name="description" content="{html_mod.escape(article["meta"])}"></head>'
+           f'<body>{article["html"]}</body></html>')
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(doc)
+    return path
+
+
+def _plan_slots(cfg):
+    """각 갈래의 슬롯을 (series/single)로 계획. 시리즈=1슬롯(여러 편 생성)."""
+    c = cfg.get("counts", {})
+    smin = c.get("series_min_parts", 2)
+    smax = c.get("series_max_parts", 3)
+
+    def parts():
+        return random.randint(smin, smax)
+
+    slots = []
+    for _ in range(c.get("long_series", 2)):
+        slots.append(("long", "series", parts()))
+    for _ in range(c.get("long_single", 2)):
+        slots.append(("long", "single", 1))
+    for _ in range(c.get("season_series", 1)):
+        slots.append(("season", "series", parts()))
+    for _ in range(c.get("season_single", 1)):
+        slots.append(("season", "single", 1))
+    return slots
+
+
+def _run_category(cfg, cat, hist, auto_publish):
+    """한 카테고리에 대해 슬롯 계획대로 글을 생성해 리스트로 반환."""
+    name = cat["name"]
+    blog_url = cfg.get("blog_url", "") or cfg.get("site", {}).get("blog_url", "")
+    insert_ads = cfg.get("ads", {}).get("insert_slots", True)
+    wp_cfg = cfg.get("wordpress", {})
+    resolver = make_image_resolver(cfg, auto_publish, name)
+
+    # 이 카테고리의 과거 글만으로 중복방지 + 내부링크
+    cat_hist = [a for a in hist["articles"] if a.get("category") == name]
+    exclude = [a["title"] for a in cat_hist] + [a.get("keyword", "") for a in cat_hist]
+    related_pool = list(reversed(cat_hist))[:6]
+
+    print(f"\n########## [{name}] ##########")
+    slots = _plan_slots(cfg)
+    need = {"long": sum(1 for s in slots if s[0] == "long"),
+            "season": sum(1 for s in slots if s[0] == "season")}
+    topic_q = {}
+    for lane in ("long", "season"):
+        if need[lane] <= 0:
+            continue
+        label = "저경쟁 롱테일" if lane == "long" else "시즌 선점"
+        print(f"[{label}] 슬롯 {need[lane]}개용 주제 확보…")
+        got = collect_lane(cfg, cat, lane, need[lane], exclude)
+        topic_q[lane] = got
+        print(f"  · 주제:", [t["keyword"] for t in got])
+        exclude += [t["keyword"] for t in got]
+
+    out = []
+    slot_count = {"long": 0, "season": 0}
+    for lane, mode, n_parts in slots:
+        q = topic_q.get(lane, [])
+        if not q:
+            continue
+        kw = q.pop(0)
+        if not kw["keyword"]:
+            continue
+        related = [{"title": r["title"], "slug": r.get("slug", ""),
+                    "url": r.get("post_url") or r.get("url", "")}
+                   for r in (out[-2:] + related_pool)[:3]]
+        if mode == "series":
+            print(f"-> [시리즈 {n_parts}편][{lane}] {kw['keyword']}")
+            arts = generate_series(kw["keyword"], lane, n_parts, cfg["llm"],
+                                   category=name, related=related, blog_url=blog_url,
+                                   insert_ads=insert_ads, image_resolver=resolver)
+        else:
+            print(f"-> [단일][{lane}] {kw['keyword']}")
+            arts = generate_article(kw["keyword"], lane, cfg["llm"],
+                                    category=name, related=related, blog_url=blog_url,
+                                    insert_ads=insert_ads, image_resolver=resolver)
+        slot_count[lane] += 1
+        for a in arts:
+            a["category"] = name
+            a["volume"] = kw.get("volume")
+            a["competition"] = kw.get("competition", "")
+            a["steadiness"] = kw.get("steadiness")
+            a["interest"] = kw.get("interest")
+            a["lane_reason"] = kw.get("lane_reason", "")
+            if auto_publish:
+                url = publish_to_wordpress(a, wp_cfg)
+                a["status"] = "게시됨" if url else "게시실패"
+                a["post_url"] = url or ""
+            else:
+                a["status"] = "복붙대기"
+                a["post_url"] = ""
+            a["copy_file"] = save_copy_html(a)
+            out.append(a)
+    print(f"  → [{name}] 슬롯 {sum(slot_count.values())}건 · 글 {len(out)}편")
+    return out
+
+
+def run():
+    cfg = load_config()
+    wp_cfg = cfg.get("wordpress", {})
+    auto_publish = wp_cfg.get("enabled", False)
+    cats = get_categories(cfg)
+
+    print(f"=== {datetime.now():%Y-%m-%d %H:%M} 수익형 글 생성 시작 · 카테고리 {len(cats)}개 ===")
+    hist = load_history()
+
+    all_articles = []
+    for cat in cats:
+        if not cat["name"]:
+            continue
+        all_articles += _run_category(cfg, cat, hist, auto_publish)
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    for a in all_articles:
+        hist["articles"].append({
+            "title": a["title"], "slug": a.get("slug", ""), "url": a.get("post_url", ""),
+            "kind": a["kind"], "keyword": a["keyword"], "category": a.get("category", ""),
+            "date": today, "series_id": a.get("series_id", ""),
+        })
+    save_history(hist)
+    log_rows(all_articles, cfg.get("sheets"))
+
+    # 카테고리별 집계
+    from collections import Counter
+    per_cat = Counter(a.get("category", "") for a in all_articles)
+
+    os.makedirs(DASH_DATA, exist_ok=True)
+    payload = {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "categories": [c["name"] for c in cats],
+        "auto_publish": auto_publish,
+        "per_category": dict(per_cat),
+        "total_all": len(hist["articles"]),
+        "articles": all_articles,
+    }
+    for p in (os.path.join(DASH_DATA, f"{today}.json"), os.path.join(DASH_DATA, "latest.json")):
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+
+    n_series = len({a.get("series_id") for a in all_articles if a.get("series_id")})
+    print(f"\n=== 완료: 카테고리 {len(cats)}개 · 실제 글 {len(all_articles)}편"
+          f"(시리즈 {n_series}개) · 전체 누적 {len(hist['articles'])}편 ===")
+
+
+if __name__ == "__main__":
+    run()
