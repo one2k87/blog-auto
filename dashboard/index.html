@@ -587,13 +587,19 @@ function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
 function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
 function togglePrev(i){document.getElementById("prev-"+i).classList.toggle("open");}
 
-async function wpCategoryId(base,auth,name){
+async function wpCategoryId(base,auth,name,slug){
   try{
+    // 슬러그로 먼저 조회(영문 주소)
+    if(slug){
+      let rs=await fetch(base+"/wp-json/wp/v2/categories?slug="+encodeURIComponent(slug),{headers:{Authorization:auth}});
+      let ls=await rs.json(); if(Array.isArray(ls)&&ls.length)return ls[0].id;
+    }
     let r=await fetch(base+"/wp-json/wp/v2/categories?search="+encodeURIComponent(name),{headers:{Authorization:auth}});
     let list=await r.json(); let f=Array.isArray(list)?list.find(c=>c.name===name):null;
     if(f)return f.id;
+    const body=slug?{name,slug}:{name};
     let c=await fetch(base+"/wp-json/wp/v2/categories",{method:"POST",
-      headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify({name})});
+      headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify(body)});
     if(c.ok)return (await c.json()).id;
   }catch(e){console.log("cat",e);}
   return null;
@@ -606,7 +612,7 @@ async function publish(i,btn){
     const base=CFG.site.replace(/\/+$/,"");
     const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
     const catName=a.wp_category||a.category||"";
-    const catId=catName?await wpCategoryId(base,auth,catName):null;  // 카테고리별 주소로
+    const catId=catName?await wpCategoryId(base,auth,catName,a.wp_category_slug):null;  // 영문 슬러그 주소로
     const body={title:a.title,content:a.html,excerpt:a.meta||"",slug:a.slug||"",status:CFG.status||"draft"};
     if(catId)body.categories=[catId];
     const r=await fetch(base+"/wp-json/wp/v2/posts",{
