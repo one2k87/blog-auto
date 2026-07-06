@@ -66,6 +66,9 @@ def _img_slot(desc):
 
 
 def _article_prompt(keyword, kind, category, links, related, insert_ads):
+    from datetime import date
+    today = date.today()
+    nxt = today.month % 12 + 1
     link_lines = "\n".join(f"- {l['title']}: {l['url']}" for l in links) or "(없음)"
     rel_lines = "\n".join(f"- {r['title']}" for r in related) or "(없음)"
     kind_hint = (
@@ -82,6 +85,19 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads):
     )
 
     return f"""'{category}' 카테고리의 애드센스 수익형 한국어 블로그 글을 작성하세요.
+
+[오늘 날짜] {today.year}년 {today.month}월. (다음 시즌은 {nxt}월)
+
+[제목 절대 규칙]
+- 제목은 완성된 자연스러운 한국어 문장이어야 한다.
+- '○○', 'XX', 'N월', 'N개', 빈칸, 채우지 않은 자리표시자를 절대 쓰지 말 것.
+- 날짜는 '연·월'까지만 표기한다('{today.year}년 {today.month}월'처럼). 특정 '일자(며칠)'는 제목에 넣지 말 것.
+  (예: "월 출시 예정" ❌ → "{today.year}년 {today.month}월 개인사업자 혜택, 미리 준비할 5가지" ✅)
+- 제목이 조사·기호(!, ,, ·)로 시작하지 말 것. 주어/키워드로 시작.
+
+[본문 날짜 규칙]
+- 정확한 '일자(며칠)'는 확실히 아는 경우에만 표기한다. 확실치 않으면 지어내지 말고 '{today.month}월 중', '하반기', '연내' 등 범위로만.
+- 제도 시행일·신청 마감일 등 바뀔 수 있는 날짜를 단정하지 말고, "공식 발표 기준 확인 필요"처럼 여지를 둔다.
 
 [애드센스 실전 전략 5가지 — 자료 기준 그대로 반영]
 ① 클릭률 구조: 독자는 정독하지 않고 훑어본다. 이미지를 먼저 보여주고 그 아래(정보가 끝나는 문단 뒤)에
@@ -366,10 +382,17 @@ def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
     if not body or "===META===" in body or body.lstrip().startswith("{") or '"html_body"' in body:
         body = _salvage_html(raw) or f"<p>{html_mod.escape(keyword)} 관련 정보를 정리한 글입니다.</p>"
         data["html_body"] = body
-    # 제목 보정: 비었거나 너무 짧으면(한 단어 등) 키워드 기반 제목으로
+    # 제목 보정: 자리표시자·깨진 제목 감지 시 키워드 기반 완성 제목으로 교체
     title = (data.get("title") or "").strip()
-    if len(title) < 12:
-        title = f"{keyword} 총정리 — 조건·방법 한눈에 정리"
+    title = re.sub(r"^[\s!,.\-·…∼~•]+", "", title)   # 앞의 조사/기호 제거
+    _bad = (
+        len(title) < 12
+        or re.match(r"^(월|일|년|개|위|원)\b", title)                  # 숫자 빠진 단위로 시작
+        or re.search(r"[○◯□]{1,}|[Xx]{2,}|\bN(월|개|위|년|원)\b|\bXX\b|__+|\(\)|\[\]", title)
+        or re.search(r"(?<![0-9])월\s*(출시|시행|시작|오픈|공개)", title)  # 숫자 없이 'X월 ...'
+    )
+    if _bad:
+        title = f"{keyword} 총정리 — 조건·방법·신청까지 한눈에"
     data["title"] = title
     slug = slugify((data.get("slug") or "").strip() or slugify(title))
     full_html = _assemble(data, related, blog_url, insert_ads, image_resolver, series_nav,
