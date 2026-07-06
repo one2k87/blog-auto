@@ -87,7 +87,17 @@
   .mchip b{color:var(--txt)}
   .m-vol b{color:#ffd479}
   .m-steady b{color:var(--ok)}
-  .title{font-size:16px;font-weight:700;line-height:1.4}
+  .title{font-size:16px;font-weight:700;line-height:1.4;cursor:pointer;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    position:relative;padding-right:16px}
+  .title::after{content:"▾";position:absolute;right:0;bottom:0;color:var(--muted);font-size:11px}
+  .title-pop{display:none;margin:4px 0 2px;padding:10px 12px;background:var(--card2);
+    border:1px solid var(--line);border-radius:12px;font-size:14px;line-height:1.5;font-weight:600;
+    position:relative;animation:popin .15s ease}
+  .title-pop.open{display:block}
+  .title-pop::before{content:"";position:absolute;top:-6px;left:16px;width:10px;height:10px;
+    background:var(--card2);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:rotate(45deg)}
+  @keyframes popin{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
   .meta{font-size:13px;color:var(--muted);line-height:1.55}
   .tags{display:flex;gap:6px;flex-wrap:wrap}
   .tag{font-size:11px;color:var(--muted);background:var(--card2);padding:3px 8px;border-radius:5px}
@@ -609,6 +619,7 @@ function metricLine(a){
 function copyHtml(i){clip(visible()[i].html,"HTML 복사됨 ✓");}
 function copyText(i){clip(htmlToText(visible()[i].html),"텍스트 복사됨 ✓");}
 function togglePrev(i){document.getElementById("prev-"+i).classList.toggle("open");}
+function toggleTitle(i){const el=document.getElementById("tpop-"+i);if(el)el.classList.toggle("open");}
 
 async function wpCategoryId(base,auth,name,slug){
   try{
@@ -627,6 +638,24 @@ async function wpCategoryId(base,auth,name,slug){
   }catch(e){console.log("cat",e);}
   return null;
 }
+// 태그 이름 목록 → ID 목록(없으면 생성)
+async function wpTagIds(base,auth,names){
+  const ids=[];
+  for(const name of (names||[])){
+    if(!name)continue;
+    try{
+      let r=await fetch(base+"/wp-json/wp/v2/tags?search="+encodeURIComponent(name),{headers:{Authorization:auth}});
+      let list=await r.json();
+      let f=Array.isArray(list)?list.find(t=>(t.name||"").toLowerCase()===String(name).toLowerCase()):null;
+      if(f){ids.push(f.id);continue;}
+      let c=await fetch(base+"/wp-json/wp/v2/tags",{method:"POST",
+        headers:{Authorization:auth,"Content-Type":"application/json"},body:JSON.stringify({name})});
+      if(c.ok)ids.push((await c.json()).id);
+    }catch(e){console.log("tag",e);}
+  }
+  return ids;
+}
+
 // 워드프레스에 글 1개 게시(단일·전체 공용). 성공 시 a.status/post_url 갱신
 async function wpPost(a){
   if(a.status==="게시됨") return {ok:true, skip:true};
@@ -636,8 +665,15 @@ async function wpPost(a){
     const auth="Basic "+btoa(CFG.user+":"+CFG.pass);
     const catName=a.wp_category||a.category||"";
     const catId=catName?await wpCategoryId(base,auth,catName,a.wp_category_slug):null;
+    const tagIds=await wpTagIds(base,auth,a.tags||[]);   // 태그 자동 생성·연결
     const body={title:a.title,content:a.html,excerpt:a.meta||"",slug:a.slug||"",status:CFG.status||"draft"};
     if(catId)body.categories=[catId];
+    if(tagIds.length)body.tags=tagIds;
+    // Rank Math 포커스 키프레이즈·메타설명 자동 기입 (mu-plugin 등록 시 반영)
+    const rm={};
+    if(a.focus_keyword)rm.rank_math_focus_keyword=a.focus_keyword;
+    if(a.meta)rm.rank_math_description=a.meta;
+    if(Object.keys(rm).length)body.meta=rm;
     const r=await fetch(base+"/wp-json/wp/v2/posts",{
       method:"POST",headers:{"Content-Type":"application/json","Authorization":auth},body:JSON.stringify(body)});
     if(r.ok){const d=await r.json();a.status="게시됨";a.post_url=d.link||"";return {ok:true};}
@@ -715,7 +751,8 @@ function render(){
       </div>
       <div class="kw">🔑 ${a.focus_keyword||a.keyword}${a.slug?` · /${a.slug}`:""}</div>
       ${metricLine(a)}
-      <div class="title">${a.title}</div>
+      <div class="title" onclick="toggleTitle(${i})">${escAttr(a.title)}</div>
+      <div class="title-pop" id="tpop-${i}" onclick="toggleTitle(${i})">${escAttr(a.title)}</div>
       <div class="meta">${a.meta||""}</div>
       <div class="tags">${(a.tags||[]).map(t=>`<span class="tag">#${t}</span>`).join("")}</div>
       <div class="links">${links}</div>
