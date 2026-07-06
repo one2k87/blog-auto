@@ -26,12 +26,12 @@ SYSTEM = (
     "사실이 불확실하면 단정하지 않습니다."
 )
 
-# 광고 근처에 놓는 '정책 안전한' 유도문장 (클릭 직접 유도 아님)
+# 광고 근처에 놓는 '정책 안전한' 유도문장 (자료 원문 예시 기반, 클릭 직접 유도 아님)
 CTA_LINES = [
-    "더 자세한 내용은 아래에서 이어서 확인해보세요.",
-    "관련 정보가 궁금하다면 다음 내용을 참고해보세요.",
+    "더 많은 정보는 아래에서 확인해보세요.",
+    "관련 자료가 궁금하다면 다음 내용을 참고하세요.",
+    "자세히 정리된 내용을 이어서 읽어보세요.",
     "아래에서 핵심 내용을 계속 확인해보세요.",
-    "이어지는 내용도 함께 살펴보세요.",
 ]
 
 
@@ -83,12 +83,20 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads):
 
     return f"""'{category}' 카테고리의 애드센스 수익형 한국어 블로그 글을 작성하세요.
 
-[애드센스 실전 전략 5가지 — 반드시 그대로 반영]
-① 클릭률 구조: 훑어읽는 독자를 위해 이미지를 먼저 배치하고, '정보가 끝나는 문단 뒤'에 광고가 오게 설계.
-② 고단가 키워드: 금융/보험/건강/기술 계열 고단가 키워드를 제목·첫문단·중반·마지막에 자연스러운 회화체로 분산.
-③ 타이밍/시의성: 검색이 붙을 시점을 고려해 지금 완결성 있게 정리(시즌 글은 다가올 시기를 겨냥).
-④ 체류시간: 3초 후킹 첫문장(질문/공감형) + 요약표 + 이미지/표로 시선 유지, 서론은 짧게.
-⑤ 카테고리 반복수익: 끝에 같은 카테고리의 '함께 보면 좋은 글'로 내부링크(다음 글 유도).
+[애드센스 실전 전략 5가지 — 자료 기준 그대로 반영]
+① 클릭률 구조: 독자는 정독하지 않고 훑어본다. 이미지를 먼저 보여주고 그 아래(정보가 끝나는 문단 뒤)에
+   광고가 오게 설계. 광고 근처엔 정책 위반 없는 '무의식 유도' 문장을 둔다
+   (예: "더 많은 정보는 아래에서 확인해보세요.", "관련 자료가 궁금하다면 다음 내용을 참고하세요.").
+   ※ '광고를 클릭하라'는 직접 표현은 절대 금지.
+② 고단가 키워드: 금융/보험/건강/기술 계열 단가 높은 키워드를 제목·첫문단·본문 중반·마지막 문단에 나눠
+   자연스러운 회화체로 삽입(예: "최근 자동차보험 갱신을 하면서 알아본 내용입니다.").
+   특히 제목에 고단가 키워드를 분명히 담는다.
+   (나쁜 예 "겨울철 건강관리 팁" → 좋은 예 "면역력 강화 건강기능식품 추천 (비타민, 홍삼 등)")
+③ 타이밍/시의성: '지금 뜨는'보다 '이제 뜰' 주제를 완결성 있게 정리(검색 반영에 1~2주 걸림).
+④ 체류시간: 첫 문장은 3초 안에 붙잡는 질문형/공감형으로 시작
+   (예: "왜 내 글은 수익이 안 날까요?", "매달 이런 고민 해보셨나요?"). 서론은 짧게, 핵심을 바로 전달.
+   중간중간 이미지·요약표로 시선을 붙잡는다.
+⑤ 카테고리 반복수익: 글 끝에 같은 카테고리의 '함께 보면 좋은 글'로 내부링크(다음 글로 자연스럽게 유도).
 
 핵심 키워드(고단가): {keyword}
 글 성격: {kind_hint}
@@ -97,7 +105,10 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads):
 {link_lines}
 
 [작성 규칙 — 자료 전략 그대로]
-1. 제목(title): 50~60자. 핵심 키워드를 앞쪽에 넣고, 숫자/조건/혜택으로 클릭 유인. 고단가 키워드가 제목에 분명히 드러나야 함.
+1. 제목(title): 반드시 35~60자의 '클릭을 부르는 완성된 문장형 제목'. 한 단어/키워드만 쓰지 말 것.
+   핵심 키워드를 앞쪽에 넣고, 숫자·연도·혜택·궁금증을 더한다.
+   (나쁜 예: "무직자 대출"  → 좋은 예: "무직자도 되는 소액 비상금 대출 조건 총정리 (2026 한도·금리)")
+   (나쁜 예: "다이어트"    → 좋은 예: "직장인 다이어트 식단, 이 3가지만 지켜도 살 빠집니다")
 2. hook(첫 문장): 3초 안에 이탈을 막는 질문형 또는 공감형 한 문장. (예: "대출 이자 부담, 조금이라도 줄일 방법 없을까요?")
 3. 첫 문단에서 검색 의도에 바로 답하고 핵심 키워드를 1회 자연스럽게 포함.
 4. 키워드를 제목·첫문단·본문 중반·마지막 문단에 나눠서 자연스러운 회화체로 배치.
@@ -105,39 +116,72 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads):
 6. 구조: <h2>/<h3> 계층. H2 최소 3개, 각 H2 아래 2~4문장 문단. 정보가 끝나는 지점에서 문단을 끊어 광고가 들어갈 여지를 만든다.
 7. summary_table: 핵심을 한눈에 보는 요약표(2~4행) 데이터를 rows로 제공(체류시간↑).
 8. faqs: 실제로 많이 묻는 질문 3개와 간결한 답(각 2~3문장).
-9. 총 900~1500자 분량. 광고 클릭을 직접 유도하는 문구 금지.
+9. tldr: 글 맨 위에 넣을 '핵심 요약' 2~3개(각 한 문장, 결론부터).
+10. checklist: 글 끝에 넣을 '실행 체크리스트' 3~5개(독자가 바로 할 행동).
+11. 총 900~1500자 분량. 광고 클릭을 직접 유도하는 문구 금지.
 
 참고: 같은 카테고리의 다른 글 제목(내부링크로 이어질 수 있음, 참고만):
 {rel_lines}
 
-출력은 아래 JSON만(코드블록/설명 없이):
-{{
-  "title": "...",
-  "meta": "120~155자 메타설명, 키워드 포함",
-  "slug": "english-hyphen-slug",
-  "focus_keyword": "{keyword}",
-  "tags": ["...","...","...","...","..."],
-  "hook": "첫 문장",
-  "summary_table": {{"headers": ["항목","내용"], "rows": [["...","..."],["...","..."]]}},
-  "html_body": "<p>첫문단...</p><h2>...</h2><p>[[IMG:대표 이미지 설명]]</p>[[AD]]<p>...</p><h2>...</h2><p>...[[AD]]</p>...",
-  "faqs": [{{"q":"...","a":"..."}},{{"q":"...","a":"..."}},{{"q":"...","a":"..."}}]
-}}"""
+[출력 형식 — 정확히 아래 두 블록으로만. 다른 말·코드블록 금지]
+먼저 ===META=== 줄 다음에 '작은 JSON'(본문 제외)만, 그다음 ===BODY=== 줄 다음에 '순수 HTML 본문'을 씁니다.
+본문은 JSON이 아니라 그냥 HTML이므로 따옴표를 이스케이프하지 마세요.
+
+===META===
+{{"title":"클릭 유도형 제목","meta":"120~155자 메타설명(키워드 포함)","slug":"english-hyphen-slug","focus_keyword":"{keyword}","tags":["태그1","태그2","태그3","태그4","태그5"],"hook":"3초 후킹 첫 문장","tldr":["핵심요약1","핵심요약2"],"checklist":["실행1","실행2","실행3"],"summary_table":{{"headers":["항목","내용"],"rows":[["...","..."],["...","..."]]}},"faqs":[{{"q":"질문1","a":"답1"}},{{"q":"질문2","a":"답2"}},{{"q":"질문3","a":"답3"}}]}}
+===BODY===
+<p>첫 문단(검색 의도에 바로 답, 키워드 포함)</p>
+<h2>소제목1</h2><p>내용... [[IMG:대표 이미지 설명]]</p>[[AD]]
+<h2>소제목2</h2><p>내용...</p>
+<h2>소제목3</h2><p>마무리 내용... [[AD]]</p>"""
+
+
+def _repair_json(s):
+    s = (s or "").strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```[a-zA-Z]*\n?", "", s); s = re.sub(r"\n?```$", "", s).strip()
+    # 중괄호 균형 부분만 추출
+    a, b = s.find("{"), s.rfind("}")
+    if a != -1 and b != -1 and b > a:
+        s = s[a:b + 1]
+    for cand in (s, re.sub(r",\s*([}\]])", r"\1", s)):   # 후행 콤마 제거 재시도
+        try:
+            return json.loads(cand)
+        except Exception:
+            continue
+    return {}
 
 
 def _extract_json(text):
-    text = (text or "").strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
-        text = re.sub(r"\n?```$", "", text).strip()
-    try:
-        return json.loads(text)
-    except Exception:
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group(0))
-            except Exception:
-                pass
+    return _repair_json(text)
+
+
+def _salvage_html(raw):
+    """파싱 실패 시 JSON은 버리고 HTML 조각만 건져낸다(원문 노출 방지)."""
+    s = re.sub(r"===\w+===", "", raw or "")
+    lt = s.find("<p")
+    if lt == -1:
+        lt = s.find("<h")
+    gt = s.rfind(">")
+    if lt != -1 and gt != -1 and gt > lt:
+        seg = s[lt:gt + 1]
+        return seg.replace('\\"', '"').replace('\\n', '\n').replace('\\/', '/').replace('\\t', ' ')
+    return ""
+
+
+def _parse_output(raw):
+    """LLM 출력(===META=== / ===BODY===)을 파싱. 실패해도 JSON 원문이 본문에 새지 않게."""
+    raw = raw or ""
+    if "===BODY===" in raw:
+        meta_part, body_part = raw.split("===BODY===", 1)
+        meta_part = re.sub(r"^.*?===META===", "", meta_part, flags=re.DOTALL).strip() or meta_part
+        data = _repair_json(meta_part)
+        data["html_body"] = body_part.strip()
+        return data
+    # 구형(단일 JSON) 응답 호환
+    data = _repair_json(raw)
+    if data and data.get("html_body"):
+        return data
     return {}
 
 
@@ -233,9 +277,53 @@ def _build_internal_links(related, blog_url):
             f'<ul class="related">{"".join(items)}</ul>')
 
 
-def _build_jsonld(title, meta, faqs, lang="ko"):
+def _tldr_html(items):
+    if not items:
+        return ""
+    lis = "".join(f"<li>{html_mod.escape(str(x))}</li>" for x in items[:4])
+    return ('<div class="tldr" style="margin:14px 0;padding:14px 16px;background:#f2f0ff;'
+            'border-radius:12px;border:1px solid #e6e2ff">'
+            '<strong>📌 핵심 요약</strong>'
+            f'<ul style="margin:6px 0 0;padding-left:18px;line-height:1.6">{lis}</ul></div>')
+
+
+def _checklist_html(items):
+    if not items:
+        return ""
+    lis = "".join(f'<li style="margin:4px 0">✅ {html_mod.escape(str(x))}</li>' for x in items[:6])
+    return ('<h2>실행 체크리스트</h2>'
+            f'<ul class="checklist" style="list-style:none;padding-left:0">{lis}</ul>')
+
+
+def _disclaimer_html(category):
+    c = category or ""
+    if any(k in c for k in ["금융", "재테크", "경제", "대출", "보험", "투자", "세금", "연금"]):
+        txt = ("본 콘텐츠는 일반적인 정보 제공을 목적으로 하며, 특정 금융상품 가입·투자를 권유하지 않습니다. "
+               "대출·투자·세무 결정 전 본인 상황에 맞게 전문가와 상담하시기 바랍니다.")
+    elif any(k in c for k in ["건강", "다이어트", "의료", "질환", "영양", "탈모", "피부"]):
+        txt = ("본 콘텐츠는 정보 제공을 목적으로 하며 의학적 진단·치료를 대체하지 않습니다. "
+               "증상이 있거나 치료가 필요하면 반드시 전문의와 상담하세요.")
+    else:
+        txt = "본 콘텐츠는 정보 제공을 목적으로 작성되었습니다. 실제 적용 시 최신 정보를 확인하시기 바랍니다."
+    return ('<p class="disclaimer" style="margin-top:22px;padding:12px 14px;border-left:3px solid #d8dbe0;'
+            f'background:#fafbfc;color:#6b7280;font-size:13px;line-height:1.6">ℹ️ {txt}</p>')
+
+
+def _byline_html(author):
+    from datetime import date
+    d = date.today()
+    a = html_mod.escape(author or "편집부")
+    return (f'<p class="byline" style="font-size:12px;color:#98a2b3;margin:2px 0 12px">'
+            f'✍️ {a} · 최종 업데이트 {d.year}년 {d.month}월 {d.day}일</p>')
+
+
+def _build_jsonld(title, meta, faqs, author="편집부", lang="ko"):
+    from datetime import date
+    iso = date.today().isoformat()
     blog = {"@context": "https://schema.org", "@type": "BlogPosting",
             "headline": title, "description": meta, "inLanguage": lang,
+            "datePublished": iso, "dateModified": iso,
+            "author": {"@type": "Organization", "name": author or "편집부"},
             "mainEntityOfPage": {"@type": "WebPage"}}
     scripts = [json.dumps(blog, ensure_ascii=False)]
     if faqs:
@@ -247,30 +335,45 @@ def _build_jsonld(title, meta, faqs, lang="ko"):
     return "".join(f'<script type="application/ld+json">{s}</script>' for s in scripts)
 
 
-def _assemble(data, related, blog_url, insert_ads, resolver=None, series_nav=""):
+def _assemble(data, related, blog_url, insert_ads, resolver=None, series_nav="",
+              category="", author="편집부"):
     body = _convert_markers(data.get("html_body", ""), insert_ads, resolver)
     body, headings = _slugify_headings(body)
     toc = _build_toc(headings)
     summary = _summary_table_html(data.get("summary_table"))
     hook = data.get("hook", "")
     hook_html = f'<p class="hook" style="font-size:17px;font-weight:600">{html_mod.escape(hook)}</p>' if hook else ""
+    byline = _byline_html(author)                       # 작성자·최종수정일
+    tldr = _tldr_html(data.get("tldr", []))             # 상단 핵심요약
+    checklist = _checklist_html(data.get("checklist", []))  # 실행 체크리스트
     faq_html = _build_faq_html(data.get("faqs", []))
+    disclaimer = _disclaimer_html(category)             # 면책 고지(YMYL)
     internal = _build_internal_links(related, blog_url)
-    jsonld = _build_jsonld(data.get("title", ""), data.get("meta", ""), data.get("faqs", []))
-    # 순서: 후킹 → (시리즈 내비) → 목차 → 요약표 → 본문(이미지/광고) → FAQ → (시리즈 내비) → 내부링크 → 구조화데이터
-    return f"{hook_html}{series_nav}{toc}{summary}{body}{faq_html}{series_nav}{internal}{jsonld}"
+    jsonld = _build_jsonld(data.get("title", ""), data.get("meta", ""), data.get("faqs", []), author)
+    # 순서: 후킹 → 작성정보 → 핵심요약 → (시리즈 내비) → 목차 → 요약표 → 본문 →
+    #        실행 체크리스트 → FAQ → 면책 → (시리즈 내비) → 내부링크 → 구조화데이터
+    return (f"{hook_html}{byline}{tldr}{series_nav}{toc}{summary}{body}"
+            f"{checklist}{faq_html}{disclaimer}{series_nav}{internal}{jsonld}")
 
 
 def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
-             insert_ads, image_resolver, series_nav=""):
+             insert_ads, image_resolver, series_nav="", author="편집부"):
     prompt = _article_prompt(keyword, kind, category, links, related, insert_ads)
-    raw = chat(prompt, llm_cfg, system=SYSTEM, max_tokens=4500, temperature=0.7)
-    data = _extract_json(raw)
-    if not data:
-        data = {"title": keyword, "meta": "", "slug": slugify(keyword),
-                "tags": [], "hook": "", "summary_table": {}, "html_body": raw, "faqs": []}
-    slug = slugify((data.get("slug") or "").strip() or slugify(data.get("title", keyword)))
-    full_html = _assemble(data, related, blog_url, insert_ads, image_resolver, series_nav)
+    raw = chat(prompt, llm_cfg, system=SYSTEM, max_tokens=6000, temperature=0.7)
+    data = _parse_output(raw)
+    body = data.get("html_body", "")
+    # 파싱 실패/본문 유실 시: JSON 원문을 본문에 넣지 않고 HTML만 건져 안전 처리
+    if not body or "===META===" in body or body.lstrip().startswith("{") or '"html_body"' in body:
+        body = _salvage_html(raw) or f"<p>{html_mod.escape(keyword)} 관련 정보를 정리한 글입니다.</p>"
+        data["html_body"] = body
+    # 제목 보정: 비었거나 너무 짧으면(한 단어 등) 키워드 기반 제목으로
+    title = (data.get("title") or "").strip()
+    if len(title) < 12:
+        title = f"{keyword} 총정리 — 조건·방법 한눈에 정리"
+    data["title"] = title
+    slug = slugify((data.get("slug") or "").strip() or slugify(title))
+    full_html = _assemble(data, related, blog_url, insert_ads, image_resolver, series_nav,
+                          category=category, author=author)
     return {
         "keyword": keyword, "kind": kind, "lang": "ko", "category": category,
         "title": data.get("title") or keyword,
@@ -282,12 +385,13 @@ def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
 
 
 def generate_article(keyword, kind, llm_cfg, category="", related=None,
-                     blog_url="", insert_ads=True, context_news=None, image_resolver=None):
+                     blog_url="", insert_ads=True, context_news=None, image_resolver=None,
+                     author="편집부"):
     """키워드 1개 → 수익형 한국어 글 dict 반환(리스트로 감싸 반환)."""
     related = related or []
     links = find_reference_links(keyword, max_results=2)
     art = _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
-                   insert_ads, image_resolver)
+                   insert_ads, image_resolver, author=author)
     return [art]
 
 
@@ -307,7 +411,7 @@ def _series_nav(parts_meta, cur_idx, blog_url):
 
 
 def generate_series(topic, kind, n_parts, llm_cfg, category="", related=None,
-                    blog_url="", insert_ads=True, image_resolver=None):
+                    blog_url="", insert_ads=True, image_resolver=None, author="편집부"):
     """
     하나의 주제를 2~3편 시리즈로 기획해 각 편을 완성 글로 생성.
     편 간 내부링크 + 마지막→처음 루프. 반환: 편 리스트(모두 같은 series_id).
@@ -337,7 +441,7 @@ def generate_series(topic, kind, n_parts, llm_cfg, category="", related=None,
         nav = _series_nav(parts_meta, i, blog_url)
         rel = related[:2]
         art = _gen_one(kw, kind, llm_cfg, category, links, rel, blog_url,
-                       insert_ads, image_resolver, series_nav=nav)
+                       insert_ads, image_resolver, series_nav=nav, author=author)
         art["slug"] = parts_meta[i]["slug"]     # 확정 슬러그 유지(링크 일치)
         art["series_id"] = series_id
         art["series_part"] = i + 1
