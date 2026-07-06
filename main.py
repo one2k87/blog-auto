@@ -92,11 +92,15 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
     else:
         ordered = cand
 
-    # 3) long은 네이버 실측으로 선별
+    # 3) long은 네이버 실측으로 '수익 스위트스팟'을 선별
+    #    (검색량이 충분히 있으면서 경쟁이 심하지 않은 것 = 높은 트래픽 우선, 고경쟁 제외)
     if lane == "long" and measured:
         print(f"  · 저경쟁 후보 검색량 측정(네이버)…")
         metrics.enrich(ordered, mcfg, geo="KR", want_steadiness=True)
-        floor, ceil = mcfg.get("low_volume_floor", 100), mcfg.get("low_volume_ceil", 8000)
+        floor = mcfg.get("low_volume_floor", 1000)     # 수익 나려면 최소치 상향
+        ceil = mcfg.get("low_volume_ceil", 30000)      # 이 이상은 대형 키워드로 간주(경쟁 과열)
+        comp_rank = {"낮음": 0, "중간": 1, "높음": 2, "": 1}
+        comp_penalty = {"낮음": 1.0, "중간": 1.6, "높음": 3.0, "": 1.4}
 
         def v(x):
             return x.get("volume") if x.get("volume") is not None else (x.get("interest") or 0)
@@ -105,11 +109,20 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
             vv = x.get("volume")
             return True if vv is None else (floor <= vv <= ceil)
 
-        comp_rank = {"낮음": 0, "중간": 1, "높음": 2, "": 1}
-        picked = [x for x in ordered if band(x)]
-        picked.sort(key=lambda x: (comp_rank.get(str(x.get("competition", "")), 1),
-                                   -(x.get("steadiness") or 0), -v(x)))
-        ordered = picked or ordered
+        # 수익 점수 = 검색량 ÷ 경쟁 페널티 (트래픽 많고 경쟁 낮을수록 높음). 고경쟁은 제외.
+        def score(x):
+            return v(x) / comp_penalty.get(str(x.get("competition", "")), 1.4)
+
+        pool_ok = [x for x in ordered if band(x) and str(x.get("competition", "")) != "높음"]
+        # 밴드에 든 게 부족하면 floor 이상(상한 무시)로 완화
+        if len(pool_ok) < n_slots:
+            more = [x for x in ordered if (x.get("volume") is None or x.get("volume") >= floor)
+                    and str(x.get("competition", "")) != "높음" and x not in pool_ok]
+            pool_ok += more
+        picked = pool_ok or ordered
+        picked.sort(key=lambda x: -score(x))           # 수익 점수 높은 순
+        print("  · 선별(검색량/경쟁):", [(p["keyword"], p.get("volume"), p.get("competition")) for p in picked[:n_slots]])
+        ordered = picked
 
     return ordered[:n_slots]
 
@@ -185,6 +198,7 @@ def _run_category(cfg, cat, hist, auto_publish, img_budget=None):
     name = cat["name"]
     blog_url = cfg.get("blog_url", "") or cfg.get("site", {}).get("blog_url", "")
     insert_ads = cfg.get("ads", {}).get("insert_slots", True)
+    author = cfg.get("author") or "편집부"
     wp_cfg = cfg.get("wordpress", {})
     resolver = make_image_resolver(cfg, auto_publish, name, img_budget)
 
@@ -230,12 +244,12 @@ def _run_category(cfg, cat, hist, auto_publish, img_budget=None):
                 print(f"-> [시리즈 {n_parts}편][{lane}] {kw['keyword']}")
                 arts = generate_series(kw["keyword"], lane, n_parts, cfg["llm"],
                                        category=name, related=related, blog_url=blog_url,
-                                       insert_ads=insert_ads, image_resolver=resolver)
+                                       insert_ads=insert_ads, image_resolver=resolver, author=author)
             else:
                 print(f"-> [단일][{lane}] {kw['keyword']}")
                 arts = generate_article(kw["keyword"], lane, cfg["llm"],
                                         category=name, related=related, blog_url=blog_url,
-                                        insert_ads=insert_ads, image_resolver=resolver)
+                                        insert_ads=insert_ads, image_resolver=resolver, author=author)
         except Exception as e:
             print(f"[오류] '{kw['keyword']}' 글 생성 실패(건너뜀): {e}")
             return []
