@@ -35,8 +35,9 @@
 
   "metrics": {
     "provider": "naver",
-    "low_volume_floor": 100,
-    "low_volume_ceil": 8000,
+    "low_volume_floor": 1000,
+    "low_volume_ceil": 30000,
+    "_band_설명": "저경쟁 주제의 월검색량 밴드. floor=수익 나는 최소치, ceil=이 이상은 대형(경쟁 과열)로 제외",
     "use_trends_steadiness": false,
     "naver": { "api_key": "네이버-액세스라이선스", "secret_key": "네이버-비밀키", "customer_id": "네이버-고객ID숫자" }
   },
