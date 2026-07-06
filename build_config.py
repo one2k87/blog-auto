@@ -74,8 +74,8 @@ cfg = {
     },
     "metrics": {
         "provider": envs("METRICS_PROVIDER", "naver"),
-        "low_volume_floor": envi("LOW_VOLUME_FLOOR", 100),
-        "low_volume_ceil": envi("LOW_VOLUME_CEIL", 8000),
+        "low_volume_floor": envi("LOW_VOLUME_FLOOR", 1000),    # 수익 나는 최소 검색량
+        "low_volume_ceil": envi("LOW_VOLUME_CEIL", 30000),     # 이 이상은 대형(경쟁 과열) 제외
         "use_trends_steadiness": b("USE_TRENDS_STEADINESS", False),
         "naver": {
             "api_key": envs("NAVER_API_KEY", ""),
