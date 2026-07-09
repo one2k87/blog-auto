@@ -15,8 +15,8 @@
 
   "ads": { "insert_slots": true },
 
-  "keyword_strategy": "balanced",
-  "_keyword_strategy_설명": "rankable=상위노출 잘되는 것(경쟁낮음) 우선 · traffic=검색량 많은 것 우선(상위노출 강화 글) · balanced=균형(기본)",
+  "traffic_ratio": 30,
+  "_traffic_ratio_설명": "검색량 우선 비율(0~100). 0=상위노출 잘되는 것만, 100=검색량 큰 것만, 30=상위노출 위주+검색량 약간. 나머지는 상위노출 몫",
 
 
   "images": {
