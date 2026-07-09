@@ -54,7 +54,10 @@ cfg = {
         "series_max_parts": envi("SERIES_MAX", 3),
     },
     "ads": {"insert_slots": b("INSERT_ADS", True)},
-    "keyword_strategy": envs("KEYWORD_STRATEGY", "balanced"),  # rankable|traffic|balanced
+    # 검색량 우선 비율(0~100). 없으면 KEYWORD_STRATEGY로 환산(rankable=0/traffic=100/balanced=30)
+    "traffic_ratio": (envi("TRAFFIC_RATIO", -1) if os.getenv("TRAFFIC_RATIO", "").strip()
+                      else {"rankable": 0, "traffic": 100, "balanced": 30}.get(
+                          envs("KEYWORD_STRATEGY", "balanced"), 30)),
     "images": {
         # 폰/수동 실행에서 images=false 를 넘기면 이미지 생성 끔
         "provider": ("none" if str(os.getenv("IMAGE_ENABLED", "")).strip().lower() == "false"
