@@ -308,7 +308,16 @@
 
   <div class="field">
     <button class="btn sm" id="updateBtn" style="width:100%">🔄 앱 최신화 (업데이트 안 될 때)</button>
-    <div class="hint">보통은 자동으로 최신화됩니다. 화면이 옛날 그대로면 이 버튼을 누르세요(캐시를 비우고 새로 불러옵니다).</div>
+    <div class="hint">업데이트는 이 버튼(또는 자동)으로 하세요. <b>앱을 삭제·재설치하면 설정이 초기화</b>되니 되도록 삭제하지 마세요.</div>
+  </div>
+
+  <div class="field">
+    <label>💾 설정 백업 / 복원</label>
+    <div class="actions">
+      <button class="btn sm" id="cfgBackup" style="flex:1">백업(복사)</button>
+      <button class="btn sm" id="cfgRestore" style="flex:1">복원(붙여넣기)</button>
+    </div>
+    <div class="hint">혹시 설정이 사라져도 <b>복원</b>에 백업값을 붙여넣으면 한 번에 되살아납니다. 안전하게 메모장 등에 보관하세요.</div>
   </div>
 
   <div class="divider"></div>
@@ -854,6 +863,13 @@ document.getElementById("sheetBg").onclick=closeSheet;
 document.getElementById("cfgClose").onclick=closeSheet;
 document.getElementById("logoutBtn").onclick=()=>{closeSheet();logout();};
 document.getElementById("updateBtn").onclick=()=>{toast("최신 버전 불러오는 중…");forceUpdate();};
+document.getElementById("cfgBackup").onclick=()=>{ clip(JSON.stringify(CFG),"설정 복사됨 ✓ 메모장에 붙여넣어 보관하세요"); };
+document.getElementById("cfgRestore").onclick=()=>{
+  const s=prompt("백업해둔 설정 값을 붙여넣으세요");
+  if(!s)return;
+  try{ Object.assign(CFG, JSON.parse(s)); saveCfg(); openSheet(); applyPlanUI(); toast("설정 복원됨 ✓"); loadData(); }
+  catch(e){ toast("복원 실패 — 값이 올바른지 확인",1); }
+};
 document.getElementById("faceToggleBtn").onclick=()=>{ CFG.faceEnabled?disableFaceId():registerFaceId(); };
 document.getElementById("autoLoginBtn").onclick=()=>{
   CFG.autoLogin=!CFG.autoLogin; saveCfg(); refreshFaceBtn();
