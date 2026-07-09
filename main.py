@@ -92,41 +92,54 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
     else:
         ordered = cand
 
-    # 3) long은 네이버 실측 + '키워드 전략'으로 선별
-    #    keyword_strategy: rankable(상위노출 잘되는 것 우선) | traffic(검색량 많은 것 우선) | balanced(균형)
-    strategy = (cfg.get("keyword_strategy") or "balanced").lower()
+    # 3) long은 네이버 실측 + '비율(traffic_ratio)'로 선별
+    #    traffic_ratio: 검색량 우선의 비율(0~100). 0=상위노출만, 100=검색량만, 30=상위노출 위주+검색량 약간
+    ratio = cfg.get("traffic_ratio")
+    if ratio is None:  # 구버전 keyword_strategy 호환
+        ratio = {"rankable": 0, "traffic": 100, "balanced": 30}.get(
+            (cfg.get("keyword_strategy") or "balanced").lower(), 30)
+    ratio = max(0, min(100, int(ratio)))
+    traffic_set = set()
+
     if lane == "long" and measured:
-        print(f"  · 저경쟁 후보 검색량 측정(네이버)… (전략={strategy})")
+        print(f"  · 저경쟁 후보 검색량 측정(네이버)… (검색량 비율={ratio}%)")
         metrics.enrich(ordered, mcfg, geo="KR", want_steadiness=True)
         floor = mcfg.get("low_volume_floor", 1000)
-        ceil = mcfg.get("low_volume_ceil", 30000)
         comp_rank = {"낮음": 0, "중간": 1, "높음": 2, "": 1}
-        comp_penalty = {"낮음": 1.0, "중간": 1.6, "높음": 3.0, "": 1.4}
 
         def v(x):
             return x.get("volume") if x.get("volume") is not None else (x.get("interest") or 0)
 
-        above_floor = [x for x in ordered if (x.get("volume") is None or v(x) >= floor)]
-        if strategy == "rankable":
-            # 내가 상위노출 잘 되는 것 우선 = 경쟁 낮은 것 먼저, 그 중 검색량 큰 순
-            picked = sorted(above_floor, key=lambda x: (comp_rank.get(str(x.get("competition", "")), 1), -v(x)))
-        elif strategy == "traffic":
-            # 검색량 많은 것 우선(경쟁 감수) = 트래픽 큰 순
-            picked = sorted(above_floor, key=lambda x: -v(x))
-        else:  # balanced: 검색량÷경쟁 점수, 고경쟁 제외
-            band_ok = [x for x in ordered if (v(x) == 0 or floor <= v(x) <= ceil)
-                       and str(x.get("competition", "")) != "높음"]
-            band_ok = band_ok or [x for x in above_floor if str(x.get("competition", "")) != "높음"]
-            picked = sorted(band_ok, key=lambda x: -(v(x) / comp_penalty.get(str(x.get("competition", "")), 1.4)))
-        picked = picked or ordered
+        above = [x for x in ordered if (x.get("volume") is None or v(x) >= floor)] or ordered
+        n_traffic = round(n_slots * ratio / 100.0)          # 검색량 우선으로 뽑을 개수
+        n_rank = n_slots - n_traffic                        # 상위노출(경쟁낮음) 우선 개수
+        rank_sorted = sorted(above, key=lambda x: (comp_rank.get(str(x.get("competition", "")), 1), -v(x)))
+        traffic_sorted = sorted(above, key=lambda x: -v(x))
+
+        picked = []
+        for x in rank_sorted:                               # 상위노출 몫 먼저
+            if len(picked) >= n_rank:
+                break
+            if x not in picked:
+                picked.append(x)
+        for x in traffic_sorted:                            # 검색량 몫
+            if len([p for p in picked if id(p) in traffic_set]) >= n_traffic:
+                break
+            if x not in picked:
+                picked.append(x); traffic_set.add(id(x))
+        for x in rank_sorted + traffic_sorted:              # 모자라면 채우기
+            if len(picked) >= n_slots:
+                break
+            if x not in picked:
+                picked.append(x)
         print("  · 선별(검색량/경쟁):", [(p["keyword"], p.get("volume"), p.get("competition")) for p in picked[:n_slots]])
         ordered = picked
 
     sel = ordered[:n_slots]
-    # 상위노출 강화 대상 표시: 경쟁도 중간/높음이거나 traffic 전략이면 강화 모드로 글 작성
+    # 상위노출 강화 대상 표시: 검색량 몫으로 뽑혔거나 경쟁도 중간/높음이면 강화 글로 작성
     for kw in sel:
         comp = str(kw.get("competition", ""))
-        kw["competitive"] = (strategy == "traffic") or (comp in ("중간", "높음"))
+        kw["competitive"] = (id(kw) in traffic_set) or (comp in ("중간", "높음")) or (ratio >= 60 and not measured)
     return sel
 
 
