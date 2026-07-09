@@ -14,6 +14,14 @@ on:
         description: "카테고리 JSON(앱에서 자동 전달). 비우면 시크릿/기본값 사용"
         default: ""
         required: false
+      strategy:
+        description: "키워드 전략: rankable | traffic | balanced"
+        default: ""
+        required: false
+      ratio:
+        description: "검색량 우선 비율 0~100(앱 슬라이더)"
+        default: ""
+        required: false
 
 permissions:
   contents: write   # 결과 latest.json 을 저장소에 커밋하기 위함
@@ -52,6 +60,8 @@ jobs:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
           CATEGORIES_JSON: ${{ github.event.inputs.categories != '' && github.event.inputs.categories || secrets.CATEGORIES_JSON }}
+          KEYWORD_STRATEGY: ${{ github.event.inputs.strategy != '' && github.event.inputs.strategy || secrets.KEYWORD_STRATEGY }}
+          TRAFFIC_RATIO: ${{ github.event.inputs.ratio != '' && github.event.inputs.ratio || secrets.TRAFFIC_RATIO }}
           BLOG_URL: ${{ secrets.BLOG_URL }}
           LONG_SERIES: ${{ secrets.LONG_SERIES }}
           LONG_SINGLE: ${{ secrets.LONG_SINGLE }}
