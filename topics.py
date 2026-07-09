@@ -54,11 +54,16 @@ def build_topic_prompt(category, category_desc, kind, count, exclude=None, today
 """
 
     if kind == "season":
-        nxt, hint = season_focus(today)
-        extra = f"""[이번 배치 = 시즌 선점]
-- '지금 뜨는' 게 아니라 '{nxt}월에 검색이 붙을' 주제를 지금 미리 잡는다(2~4주 선점).
-- 참고 시즌 맥락: {hint}
-- 계절/제도 일정/연례 이벤트와 '{category}'를 결합한 구체적 주제.
+        today = today or date.today()
+        m1 = today.month % 12 + 1          # 1개월 뒤
+        m2 = (today.month + 1) % 12 + 1     # 2개월 뒤
+        hint = _SEASON_HINT.get(m1, "")
+        extra = f"""[이번 배치 = 시즌 선점 · 1~2개월 뒤 겨냥]
+- 지금은 {today.year}년 {today.month}월. **{m1}월~{m2}월(=지금부터 1~2개월 뒤)에 검색이 오를 주제만** 고른다.
+- 검색엔진 색인·상위노출에 몇 주 걸리므로, 딱 이 시점(1~2개월 뒤)을 노려 지금 미리 쓴다.
+- ⚠️ 3개월 이상 먼 주제는 금지. (예: 지금 {today.month}월인데 11월 수능, 12월 연말정산처럼 먼 이벤트 ❌)
+- 참고 시즌 맥락({m1}월경): {hint}
+- 계절/제도 일정/연례 이벤트와 '{category}'를 결합하되, 시점이 {m1}~{m2}월인 것만.
 """
     else:
         extra = """[이번 배치 = 수익형 저경쟁(스위트스팟)]
