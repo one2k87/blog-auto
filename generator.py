@@ -65,7 +65,7 @@ def _img_slot(desc):
     )
 
 
-def _article_prompt(keyword, kind, category, links, related, insert_ads):
+def _article_prompt(keyword, kind, category, links, related, insert_ads, competitive=False):
     from datetime import date
     today = date.today()
     nxt = today.month % 12 + 1
@@ -84,8 +84,19 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads):
         else "5. 이미지는 '딱 1개'만 [[IMG:이미지설명]]로 본문 상단부에 넣으세요(광고 마커는 넣지 말 것)."
     )
 
-    return f"""'{category}' 카테고리의 애드센스 수익형 한국어 블로그 글을 작성하세요.
+    seo_block = ("""
+[상위노출 강화 모드 — 검색량이 많고 경쟁이 있는 키워드]
+- 이 글은 경쟁이 있는 키워드다. 검색자의 모든 궁금증을 이 한 글에서 끝내는 '가장 완성도 높은 글(필러 콘텐츠)'로 작성.
+- 분량 1,500~2,500자, H2 5개 이상으로 폭넓고 깊게. 각 소제목이 검색자의 세부 질문에 답하게.
+- 핵심 키워드+연관어(LSI)를 제목·첫문단·여러 H2 소제목·마지막 문단에 자연스럽게 반복(억지 반복 금지).
+- 비교표·체크리스트·구체 수치·실제 예시를 넣어 경쟁 글보다 정보량이 많게(독보적 완성도).
+- FAQ를 4~5개로 늘려 '사람들이 또 묻는 질문(PAA)'까지 커버.
+- 제목은 검색어를 정확히 포함하면서 '총정리/완벽정리/2026년' 등으로 신뢰+클릭을 동시에.
+"""
+        if competitive else "")
 
+    return f"""'{category}' 카테고리의 애드센스 수익형 한국어 블로그 글을 작성하세요.
+{seo_block}
 [오늘 날짜] {today.year}년 {today.month}월. (다음 시즌은 {nxt}월)
 
 [제목 절대 규칙]
@@ -373,8 +384,8 @@ def _assemble(data, related, blog_url, insert_ads, resolver=None, series_nav="",
 
 
 def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
-             insert_ads, image_resolver, series_nav="", author="편집부"):
-    prompt = _article_prompt(keyword, kind, category, links, related, insert_ads)
+             insert_ads, image_resolver, series_nav="", author="편집부", competitive=False):
+    prompt = _article_prompt(keyword, kind, category, links, related, insert_ads, competitive)
     raw = chat(prompt, llm_cfg, system=SYSTEM, max_tokens=6000, temperature=0.7)
     data = _parse_output(raw)
     body = data.get("html_body", "")
@@ -409,12 +420,12 @@ def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
 
 def generate_article(keyword, kind, llm_cfg, category="", related=None,
                      blog_url="", insert_ads=True, context_news=None, image_resolver=None,
-                     author="편집부"):
+                     author="편집부", competitive=False):
     """키워드 1개 → 수익형 한국어 글 dict 반환(리스트로 감싸 반환)."""
     related = related or []
     links = find_reference_links(keyword, max_results=2)
     art = _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
-                   insert_ads, image_resolver, author=author)
+                   insert_ads, image_resolver, author=author, competitive=competitive)
     return [art]
 
 
@@ -434,7 +445,8 @@ def _series_nav(parts_meta, cur_idx, blog_url):
 
 
 def generate_series(topic, kind, n_parts, llm_cfg, category="", related=None,
-                    blog_url="", insert_ads=True, image_resolver=None, author="편집부"):
+                    blog_url="", insert_ads=True, image_resolver=None, author="편집부",
+                    competitive=False):
     """
     하나의 주제를 2~3편 시리즈로 기획해 각 편을 완성 글로 생성.
     편 간 내부링크 + 마지막→처음 루프. 반환: 편 리스트(모두 같은 series_id).
@@ -464,7 +476,8 @@ def generate_series(topic, kind, n_parts, llm_cfg, category="", related=None,
         nav = _series_nav(parts_meta, i, blog_url)
         rel = related[:2]
         art = _gen_one(kw, kind, llm_cfg, category, links, rel, blog_url,
-                       insert_ads, image_resolver, series_nav=nav, author=author)
+                       insert_ads, image_resolver, series_nav=nav, author=author,
+                       competitive=competitive)
         art["slug"] = parts_meta[i]["slug"]     # 확정 슬러그 유지(링크 일치)
         art["series_id"] = series_id
         art["series_part"] = i + 1
