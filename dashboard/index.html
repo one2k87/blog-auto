@@ -231,6 +231,14 @@
     <div class="hint">여기서 정한 카테고리로 ▶ 실행 시 글이 생성됩니다. 플랜 한도까지 추가 가능.</div>
   </div>
 
+  <div class="field">
+    <label>키워드 믹스: <b id="ratioLbl"></b></label>
+    <input type="range" id="cfgRatio" min="0" max="100" step="10" value="30" style="width:100%">
+    <div class="hint">왼쪽=상위노출 잘되는 것만 · 오른쪽=검색량 큰 것만 · 가운데=섞어서.
+      예) 30%면 저경쟁 글 중 30%는 검색량 큰(경쟁 있는) 키워드로, 70%는 상위노출 쉬운 키워드로.
+      초반엔 0~30% 추천, 자리 잡으면 올리세요.</div>
+  </div>
+
   <div class="divider"></div>
 
   <div class="field">
@@ -825,6 +833,8 @@ document.getElementById("licVerify").onclick=async()=>{
 
 function openSheet(){
   document.getElementById("cfgLicense").value=CFG.license||"";
+  const rr=(CFG.trafficRatio!=null?CFG.trafficRatio:30);
+  document.getElementById("cfgRatio").value=rr; ratioLabel(rr);
   applyPlanUI(); renderCatEditor(); refreshFaceBtn();
   document.getElementById("cfgData").value=CFG.dataUrl||"";
   document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
@@ -862,6 +872,7 @@ document.getElementById("cfgSave").onclick=()=>{
   CFG.ghRepo=document.getElementById("cfgGhRepo").value.trim();
   CFG.ghToken=document.getElementById("cfgGhToken").value.trim();
   CFG.genImages=document.getElementById("cfgGenImages").checked;
+  CFG.trafficRatio=parseInt(document.getElementById("cfgRatio").value,10);
   CFG.site=document.getElementById("cfgSite").value.trim();
   CFG.user=document.getElementById("cfgUser").value.trim();
   CFG.pass=document.getElementById("cfgPass").value.trim();
@@ -873,10 +884,16 @@ document.getElementById("reload").onclick=()=>loadData(true);
 const WF="daily-blog.yml", RING_LEN=119.4;
 let RUNNING=false;
 // 실행 시 워크플로에 전달할 입력값(이미지 여부 + 내 카테고리를 플랜 한도까지)
+function ratioLabel(r){
+  const el=document.getElementById("ratioLbl"); if(el) el.textContent="상위노출 "+(100-r)+"% · 검색량 "+r+"%";
+}
+(function(){ const s=document.getElementById("cfgRatio"); if(s) s.oninput=()=>ratioLabel(parseInt(s.value,10)); })();
+
 function runInputs(withImg){
   const inp={images: withImg?"true":"false"};
   const cats=(CFG.categories||[]).slice(0,catLimit());
   if(cats.length) inp.categories=JSON.stringify(cats);
+  if(CFG.trafficRatio!=null) inp.ratio=String(CFG.trafficRatio);   // 검색량 우선 비율
   return inp;
 }
 function ghHeaders(){return {"Authorization":"Bearer "+CFG.ghToken,
