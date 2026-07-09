@@ -15,6 +15,10 @@
 
   "ads": { "insert_slots": true },
 
+  "keyword_strategy": "balanced",
+  "_keyword_strategy_설명": "rankable=상위노출 잘되는 것(경쟁낮음) 우선 · traffic=검색량 많은 것 우선(상위노출 강화 글) · balanced=균형(기본)",
+
+
   "images": {
     "provider": "gemini",
     "model": "imagen-4.0-fast-generate-001",
