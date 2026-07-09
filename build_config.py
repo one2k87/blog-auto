@@ -54,6 +54,7 @@ cfg = {
         "series_max_parts": envi("SERIES_MAX", 3),
     },
     "ads": {"insert_slots": b("INSERT_ADS", True)},
+    "keyword_strategy": envs("KEYWORD_STRATEGY", "balanced"),  # rankable|traffic|balanced
     "images": {
         # 폰/수동 실행에서 images=false 를 넘기면 이미지 생성 끔
         "provider": ("none" if str(os.getenv("IMAGE_ENABLED", "")).strip().lower() == "false"
