@@ -25,11 +25,45 @@ def envi(name, default):
         return int(default)
 
 
+def envf(name, default):
+    """환경변수 실수: 없거나 빈 값/이상값이면 default(float)."""
+    v = os.getenv(name)
+    if v is None or str(v).strip() == "":
+        return float(default)
+    try:
+        return float(str(v).strip())
+    except ValueError:
+        return float(default)
+
+
 def b(name, default=False):
     v = os.getenv(name)
     if v is None or str(v).strip() == "":
         return default
     return str(v).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _safety_block():
+    """안전/품질 강도 프리셋 → 개별 env가 있으면 그 값으로 덮어씀."""
+    presets = {
+        "느슨":  {"force_draft": False, "min_chars": 500,  "max_similarity": 0.65, "verify_accuracy": "off"},
+        "표준":  {"force_draft": True,  "min_chars": 700,  "max_similarity": 0.50, "verify_accuracy": "flag"},
+        "엄격":  {"force_draft": True,  "min_chars": 1000, "max_similarity": 0.40, "verify_accuracy": "strict"},
+    }
+    strength = envs("SAFETY_STRENGTH", "표준")
+    p = presets.get(strength, presets["표준"])
+    return {
+        "strength": strength,
+        "force_draft": (b("FORCE_DRAFT", p["force_draft"]) if os.getenv("FORCE_DRAFT", "").strip() else p["force_draft"]),
+        "min_chars": envi("QUALITY_MIN_CHARS", p["min_chars"]),
+        "min_h2": envi("QUALITY_MIN_H2", 3),
+        "stuffing_count": envi("QUALITY_STUFFING_COUNT", 8),
+        "max_keyword_density": envf("QUALITY_MAX_DENSITY", 0.03),
+        "max_similarity": envf("QUALITY_MAX_SIMILARITY", p["max_similarity"]),
+        "verify_accuracy": envs("VERIFY_ACCURACY", p["verify_accuracy"]),
+        "relink_old": b("RELINK_OLD", False),
+        "blocklist_extra": [w.strip() for w in envs("BLOCKLIST_EXTRA", "").split(",") if w.strip()],
+    }
 
 
 DEFAULT_CATS = [
@@ -54,6 +88,8 @@ cfg = {
         "series_max_parts": envi("SERIES_MAX", 3),
     },
     "ads": {"insert_slots": b("INSERT_ADS", True)},
+    # 애드센스 안전장치(초안강제 + 품질게이트 + 금지주제 + 최신성검증). 강도 프리셋 후 개별 env로 덮어씀
+    "safety": _safety_block(),
     # 검색량 우선 비율(0~100). 없으면 KEYWORD_STRATEGY로 환산(rankable=0/traffic=100/balanced=30)
     "traffic_ratio": (envi("TRAFFIC_RATIO", -1) if os.getenv("TRAFFIC_RATIO", "").strip()
                       else {"rankable": 0, "traffic": 100, "balanced": 30}.get(
