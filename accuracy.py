@@ -1,0 +1,134 @@
+"""
+accuracy.py - 글의 '최신성·정확성'을 발행 전에 세부 검증.
+
+두 단계로 확인한다:
+1) 휴리스틱(무비용): 본문 속 연도 표기를 스캔해
+   - 말이 안 되는 미래 연도(현재+2 이상) → 지어낸 정보 의심
+   - '올해/현재/최신'이라면서 현재 연도와 다른 옛 연도를 씀 → 최신화 안 됨 의심
+   - 제목의 연도가 현재/내년과 다름 → 옛 글 의심
+2) (선택) LLM 검증: 값싼 모델로 초안을 읽고
+   - 지금도 진행 중인지(진행중/종료/예정/불명)
+   - 오래됐거나 불확실해 확인이 필요한 주장
+   - 최신성 평가(ok/warn/stale)와 보완 힌트
+를 받아 기록한다.
+
+config.safety.verify_accuracy:
+   "off"   = LLM 검증 안 함(휴리스틱만)
+   "flag"  = LLM 검증해 메모만 남김(발행은 함)         ← 기본 권장
+   "strict"= 최신성 'stale' 또는 심각 이슈면 발행 보류
+"""
+
+import re
+import json as _json
+from datetime import date
+
+_YEAR = re.compile(r"(19|20)\d{2}")
+_NOW_WORDS = ("올해", "금년", "현재", "지금", "최신")
+
+
+def heuristic(article, today=None):
+    """(issues: list[str], stale: bool) — 무비용 연도 검사."""
+    today = today or date.today()
+    cy = today.year
+    text = re.sub(r"<[^>]+>", " ", article.get("html", "") or "")
+    title = article.get("title", "") or ""
+    issues = []
+    stale = False
+
+    years = sorted({int(m.group(0)) for m in _YEAR.finditer(text)})
+    # 1) 비현실적 미래 연도(지어낸 정보 의심)
+    for y in years:
+        if y > cy + 1:
+            issues.append(f"미래 연도 {y} 표기(사실 확인 필요)")
+    # 2) '올해/현재'라면서 옛 연도를 함께 씀
+    if any(w in text for w in _NOW_WORDS):
+        old = [y for y in years if y < cy]
+        # 옛 연도가 '기준/당시/까지' 없이 등장하면 최신화 의심
+        for y in old:
+            for m in re.finditer(str(y), text):
+                ctx = text[max(0, m.start() - 12):m.end() + 12]
+                if not any(k in ctx for k in ("기준", "당시", "까지", "부터", "년도", "이전", "말")):
+                    issues.append(f"'{y}'년 정보를 최신처럼 서술(현재 {cy}년) — 최신화 확인")
+                    stale = True
+                    break
+    # 3) 제목 연도가 현재/내년과 다름
+    tyears = [int(m.group(0)) for m in _YEAR.finditer(title)]
+    for y in tyears:
+        if y < cy:
+            issues.append(f"제목의 연도 {y}가 과거(현재 {cy}년) — 제목 갱신 권장")
+            stale = True
+
+    # 중복 제거
+    seen, uniq = set(), []
+    for i in issues:
+        if i not in seen:
+            seen.add(i); uniq.append(i)
+    return uniq, stale
+
+
+def llm_review(article, chat, llm_cfg, today=None):
+    """값싼 모델로 최신성·정확성 검토. dict 반환(실패 시 {})."""
+    today = today or date.today()
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", article.get("html", "") or "")).strip()
+    if not text:
+        return {}
+    prompt = f"""오늘은 {today.year}년 {today.month}월입니다. 아래 블로그 글 초안을 '최신성·정확성' 관점에서만 검토하세요.
+- 이 글이 다루는 제도/지원금/이벤트가 지금도 진행 중인지 판단: 진행중 / 종료 / 예정 / 불명 중 하나.
+- 오래됐거나 사실이 바뀌었을 수 있어 '확인이 필요한 주장'을 짧게 나열(없으면 빈 배열).
+- 최신성 등급: ok(문제 없음) / warn(일부 확인 필요) / stale(옛 정보를 현재처럼 서술).
+- 어떻게 고치면 좋은지 한 문장.
+
+글 초안(일부):
+\"\"\"{text[:2500]}\"\"\"
+
+아래 JSON만 출력(설명 없이):
+{{"fresh":"ok|warn|stale","ongoing":"진행중|종료|예정|불명","issues":["..."],"fix":"한 문장"}}"""
+    try:
+        # 비용 절감: 저가 모델 우선
+        cfg = dict(llm_cfg)
+        fb = cfg.get("fallback_models") or []
+        if fb:
+            cfg = dict(cfg, model=fb[0])
+        raw = chat(prompt, cfg, max_tokens=500, temperature=0.1)
+        raw = re.sub(r"^```[a-zA-Z]*|```$", "", (raw or "").strip()).strip()
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        return _json.loads(m.group(0)) if m else {}
+    except Exception as e:
+        print(f"[accuracy] LLM 검증 실패(무시): {e}")
+        return {}
+
+
+def check(article, chat, llm_cfg, safety, today=None):
+    """
+    종합 검증. article에 accuracy 관련 필드를 채우고 (hold: bool, summary: str) 반환.
+    hold=True 면 최신성 문제로 발행 보류 대상(strict 모드).
+    """
+    safety = safety or {}
+    mode = str(safety.get("verify_accuracy", "flag")).lower()
+    today = today or date.today()
+
+    issues, stale = heuristic(article, today)
+    ongoing = ""
+    fresh = "stale" if stale else "ok"
+    fix = ""
+
+    if mode in ("flag", "strict"):
+        r = llm_review(article, chat, llm_cfg, today)
+        if r:
+            fresh = r.get("fresh", fresh) or fresh
+            ongoing = r.get("ongoing", "") or ""
+            fix = r.get("fix", "") or ""
+            for it in (r.get("issues") or []):
+                if it and it not in issues:
+                    issues.append(it)
+            if r.get("fresh") == "stale":
+                stale = True
+
+    article["accuracy"] = fresh                 # ok / warn / stale
+    article["ongoing"] = ongoing                # 진행중 / 종료 / 예정 / 불명
+    article["accuracy_issues"] = issues
+    article["accuracy_fix"] = fix
+
+    hold = (mode == "strict" and (fresh == "stale" or stale))
+    summary = fresh + (f"·{ongoing}" if ongoing else "") + (f" ({'; '.join(issues[:3])})" if issues else "")
+    return hold, summary
