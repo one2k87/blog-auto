@@ -127,6 +127,23 @@ def split_by_lane(items, want, other_pool=None):
     return match, rest
 
 
+# 애드센스 정책 위반 소지가 큰 주제(자동 제외). 필요시 config로 확장 가능.
+BLOCKLIST = [
+    "성인", "야동", "포르노", "19금", "성인용품",
+    "도박", "카지노", "토토", "베팅", "슬롯머신", "바카라", "사설",
+    "마약", "대마", "총기", "무기", "폭탄", "해킹", "불법",
+    "미성년", "청소년 유해",
+    "확실히 낫는", "100% 완치", "즉효", "부작용 없이", "무조건 살빠지는",  # 과장 의료/효과
+    "토렌트", "불법 다운로드", "크랙", "무료 스트리밍", "다시보기 링크",     # 저작권
+]
+
+
+def is_blocked(keyword, extra=None):
+    kw = str(keyword or "")
+    words = BLOCKLIST + list(extra or [])
+    return any(b and b in kw for b in words)
+
+
 def parse_topics(text, count):
     out = []
     seen = set()
