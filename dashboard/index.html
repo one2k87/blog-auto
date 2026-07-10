@@ -72,6 +72,8 @@
   .card *{min-width:0;max-width:100%}
   .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
   .badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px}
+  .qnote{margin:6px 0 2px;font-size:12px;line-height:1.5;padding:7px 10px;border-radius:8px;background:rgba(255,107,74,.10);color:#ffb59e;border:1px solid rgba(255,107,74,.25)}
+  .qnote.ok{background:rgba(124,92,255,.10);color:#c4b8ff;border-color:rgba(124,92,255,.25)}
   .b-hot{background:rgba(255,107,74,.15);color:var(--hot)}
   .b-niche{background:rgba(74,163,255,.15);color:var(--niche)}
   .b-lang{background:rgba(124,92,255,.15);color:#b3a4ff}
@@ -203,7 +205,7 @@
 <!-- 설정 시트 -->
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet" id="sheet">
-  <h2>⚙️ 설정 <span style="font-size:11px;color:var(--muted);font-weight:400">버전 v7 · 백업/복원 지원</span></h2>
+  <h2>⚙️ 설정 <span style="font-size:11px;color:var(--muted);font-weight:400">버전 v9 · 강도조절 · 최신성검증</span></h2>
 
   <div class="field">
     <label>현재 플랜</label>
@@ -237,6 +239,46 @@
     <div class="hint">왼쪽=상위노출 잘되는 것만 · 오른쪽=검색량 큰 것만 · 가운데=섞어서.
       예) 30%면 저경쟁 글 중 30%는 검색량 큰(경쟁 있는) 키워드로, 70%는 상위노출 쉬운 키워드로.
       초반엔 0~30% 추천, 자리 잡으면 올리세요.</div>
+  </div>
+
+  <div class="divider"></div>
+  <h2 style="font-size:14px">🛡️ 품질·안전 강도 (애드센스 보호)</h2>
+  <div class="field">
+    <label>강도 프리셋</label>
+    <select id="cfgStrength" style="width:100%">
+      <option value="느슨">느슨 — 최대한 자동발행 (검수 최소)</option>
+      <option value="표준">표준 — 권장 (초안 저장 + 최신성 메모)</option>
+      <option value="엄격">엄격 — 옛 정보·저품질 자동 보류</option>
+    </select>
+    <div class="hint">느슨=글자 500·즉시발행 · 표준=글자 700·초안+검토 · 엄격=글자 1000·옛정보면 발행보류.
+      아래 세부값은 프리셋을 덮어씁니다.</div>
+  </div>
+  <div class="field">
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" id="cfgForceDraft" style="width:auto"> 발행 대신 <b>초안 저장</b>(검토 후 발행)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px">
+      <input type="checkbox" id="cfgRelink" style="width:auto"> 예전 글이 대체되면 <b>예전 글에 최신글 링크</b> 자동 추가
+    </label>
+  </div>
+  <div class="field">
+    <label>최신성·정확성 검증</label>
+    <select id="cfgVerify" style="width:100%">
+      <option value="off">끔 — 연도 검사만(비용 0)</option>
+      <option value="flag">메모 — AI가 최신성 점검해 표시만</option>
+      <option value="strict">엄격 — 옛 정보면 발행 보류</option>
+    </select>
+    <div class="hint">글이 지금도 유효한지(진행중/종료/예정)·옛 연도를 현재처럼 쓰는지 AI가 점검합니다.
+      메모/엄격은 글마다 저가 AI 호출 1회(소액)를 더 씁니다.</div>
+  </div>
+  <div class="field">
+    <div class="row" style="gap:8px">
+      <div style="flex:1"><label>최소 글자수</label>
+        <input id="cfgMinChars" type="number" min="300" step="50" placeholder="700"></div>
+      <div style="flex:1"><label>중복 허용(0~1)</label>
+        <input id="cfgMaxSim" type="number" min="0.2" max="0.9" step="0.05" placeholder="0.5"></div>
+    </div>
+    <div class="hint">글자수 미달·소제목 부족·키워드 도배·기존글과 중복은 발행 보류됩니다. 비우면 프리셋 값 사용.</div>
   </div>
 
   <div class="divider"></div>
@@ -764,8 +806,13 @@ function render(){
         <span class="badge ${a.kind==="season"?"b-hot":"b-niche"}">${a.kind==="season"?"🗓️ 시즌":"🎯 저경쟁"}</span>
         ${a.series_part?`<span class="badge b-lang">📚 ${a.series_part}/${a.series_total}</span>`:""}
         <span class="badge ${sCls}">${a.status}</span>
+        ${a.quality==="보류"?`<span class="badge b-err" title="${escAttr(a.quality_reason||'')}">⚠️ 품질보류</span>`:""}
+        ${a.ongoing?`<span class="badge ${a.ongoing==="종료"?"b-err":(a.ongoing==="진행중"?"b-ok":"b-wait")}">${a.ongoing==="진행중"?"🟢 진행중":a.ongoing==="종료"?"⛔ 종료":a.ongoing==="예정"?"🕓 예정":"❔ 확인필요"}</span>`:""}
+        ${a.accuracy==="stale"?`<span class="badge b-err">🕰️ 옛정보 의심</span>`:(a.accuracy==="warn"?`<span class="badge b-wait">🔎 확인권장</span>`:"")}
         ${pub&&a.post_url?`<a class="badge b-ok" href="${a.post_url}" target="_blank">글 보기 ↗</a>`:""}
       </div>
+      ${a.quality==="보류"?`<div class="qnote">⚠️ 자동 품질 검사 미달(${escAttr(a.quality_reason||"")}). 애드센스 정책 보호를 위해 발행에서 제외됐습니다. 내용을 보완한 뒤 수동 발행하세요.</div>`:(a.status==="초안저장됨"?`<div class="qnote ok">📝 초안으로 저장됨. 워드프레스에서 검토 후 발행하세요(대량 자동발행 방지).</div>`:"")}
+      ${(a.accuracy_issues&&a.accuracy_issues.length)?`<div class="qnote">🕰️ 최신성 점검: ${escAttr(a.accuracy_issues.slice(0,3).join(" · "))}${a.accuracy_fix?`<br>→ ${escAttr(a.accuracy_fix)}`:""}</div>`:""}
       <div class="kw">🔑 ${a.focus_keyword||a.keyword}${a.slug?` · /${a.slug}`:""}</div>
       ${metricLine(a)}
       <div class="title" onclick="toggleTitle(${i})">${escAttr(a.title)}</div>
@@ -845,6 +892,13 @@ function openSheet(){
   const rr=(CFG.trafficRatio!=null?CFG.trafficRatio:30);
   document.getElementById("cfgRatio").value=rr; ratioLabel(rr);
   applyPlanUI(); renderCatEditor(); refreshFaceBtn();
+  const sf=CFG.safety||{};
+  document.getElementById("cfgStrength").value=sf.strength||"표준";
+  document.getElementById("cfgForceDraft").checked=(sf.force_draft!==false);
+  document.getElementById("cfgRelink").checked=!!sf.relink_old;
+  document.getElementById("cfgVerify").value=sf.verify_accuracy||"flag";
+  document.getElementById("cfgMinChars").value=sf.min_chars||"";
+  document.getElementById("cfgMaxSim").value=(sf.max_similarity!=null?sf.max_similarity:"");
   document.getElementById("cfgData").value=CFG.dataUrl||"";
   document.getElementById("cfgGhOwner").value=CFG.ghOwner||"";
   document.getElementById("cfgGhRepo").value=CFG.ghRepo||"";
@@ -889,6 +943,14 @@ document.getElementById("cfgSave").onclick=()=>{
   CFG.ghToken=document.getElementById("cfgGhToken").value.trim();
   CFG.genImages=document.getElementById("cfgGenImages").checked;
   CFG.trafficRatio=parseInt(document.getElementById("cfgRatio").value,10);
+  CFG.safety=Object.assign({}, CFG.safety, {
+    strength:document.getElementById("cfgStrength").value,
+    force_draft:document.getElementById("cfgForceDraft").checked,
+    relink_old:document.getElementById("cfgRelink").checked,
+    verify_accuracy:document.getElementById("cfgVerify").value,
+    min_chars:parseInt(document.getElementById("cfgMinChars").value,10)||undefined,
+    max_similarity:parseFloat(document.getElementById("cfgMaxSim").value)||undefined
+  });
   CFG.site=document.getElementById("cfgSite").value.trim();
   CFG.user=document.getElementById("cfgUser").value.trim();
   CFG.pass=document.getElementById("cfgPass").value.trim();
@@ -910,6 +972,7 @@ function runInputs(withImg){
   const cats=(CFG.categories||[]).slice(0,catLimit());
   if(cats.length) inp.categories=JSON.stringify(cats);
   if(CFG.trafficRatio!=null) inp.ratio=String(CFG.trafficRatio);   // 검색량 우선 비율
+  if(CFG.safety&&CFG.safety.strength) inp.strength=CFG.safety.strength; // 안전/품질 강도
   return inp;
 }
 function ghHeaders(){return {"Authorization":"Bearer "+CFG.ghToken,
