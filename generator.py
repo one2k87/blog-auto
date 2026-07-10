@@ -119,6 +119,11 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads, competi
 - 이미 지난 시점의 마감·행사(예: 과거 신청 기간)를 '아직 가능'한 것처럼 쓰지 말 것.
 - 연도를 본문에 쓸 때는 반드시 그 연도가 '언제 기준'인지 드러나게 쓴다(맥락 없는 옛 연도 단독 표기 금지).
 
+[민감·투자 주제 규칙]
+- 전쟁·분쟁·테러·정치적 충돌 등 민감·자극적 소재는 다루지 않는다(주제 이탈 금지).
+- 주식·코인·펀드 등 투자 소재라면: 특정 종목의 매수/매도를 권유하지 말고, "○○할 수 있습니다/검토해볼 수 있습니다"처럼 정보 제공형으로만 쓴다.
+  "무조건 오른다", "확실한 수익", "손실 없는" 같은 단정·과장 표현 절대 금지. 원금 손실 가능성을 자연스럽게 언급한다.
+
 [애드센스 실전 전략 5가지 — 자료 기준 그대로 반영]
 ① 클릭률 구조: 독자는 정독하지 않고 훑어본다. 이미지를 먼저 보여주고 그 아래(정보가 끝나는 문단 뒤)에
    광고가 오게 설계. 광고 근처엔 정책 위반 없는 '무의식 유도' 문장을 둔다
@@ -352,6 +357,27 @@ def _disclaimer_html(category):
             f'background:#fafbfc;color:#6b7280;font-size:13px;line-height:1.6">ℹ️ {txt}</p>')
 
 
+# 투자 위험 안내가 필요한 주제(주식·코인·파생 등)
+_INVEST_KW = ("주식", "투자", "코인", "암호화폐", "가상자산", "비트코인", "이더리움",
+              "ETF", "etf", "펀드", "선물", "옵션", "레버리지", "배당", "종목",
+              "매수", "매도", "상장", "IPO", "공모주", "채권", "리츠", "차트", "수익률")
+
+
+def _needs_invest_risk(text):
+    t = str(text or "")
+    return any(k in t for k in _INVEST_KW)
+
+
+def _invest_risk_html():
+    """주식·투자·코인 등 글에 붙는 투자 위험 고지(원금 손실 경고)."""
+    return ('<p class="invest-risk" style="margin-top:16px;padding:12px 14px;border-left:3px solid #e5484d;'
+            'background:#fff5f5;color:#b4232a;font-size:13px;line-height:1.6">'
+            '⚠️ <b>투자 위험 고지</b> — 본 콘텐츠는 정보 제공을 위한 것으로 특정 종목·상품의 매수·매도를 '
+            '권유하지 않습니다. 주식·가상자산·파생상품 등 모든 투자는 <b>원금 손실 위험</b>이 있으며 과거 수익률이 '
+            '미래 수익을 보장하지 않습니다. 투자 결정과 그 책임은 본인에게 있으며, 필요 시 자격을 갖춘 전문가와 '
+            '상담하시기 바랍니다.</p>')
+
+
 def _byline_html(author):
     from datetime import date
     d = date.today()
@@ -402,12 +428,15 @@ def _assemble(data, related, blog_url, insert_ads, resolver=None, series_nav="",
     faq_html = _build_faq_html(data.get("faqs", []))
     disclaimer = _disclaimer_html(category)             # 면책 고지(YMYL)
     freshness = _freshness_html()                        # 정보 기준일(최신성 안내)
+    # 주식·투자·코인 주제면 투자 위험 고지(원금 손실 경고) 추가
+    risk_txt = f"{category} {data.get('title','')} {data.get('focus_keyword','')} {data.get('meta','')}"
+    invest_risk = _invest_risk_html() if _needs_invest_risk(risk_txt) else ""
     internal = _build_internal_links(related, blog_url)
     jsonld = _build_jsonld(data.get("title", ""), data.get("meta", ""), data.get("faqs", []), author)
     # 순서: 후킹 → 작성정보 → 핵심요약 → (시리즈 내비) → 목차 → 요약표 → 본문 →
-    #        실행 체크리스트 → FAQ → 정보기준일 → 면책 → (시리즈 내비) → 내부링크 → 구조화데이터
+    #        실행 체크리스트 → FAQ → 정보기준일 → 투자위험 → 면책 → (시리즈 내비) → 내부링크 → 구조화데이터
     return (f"{hook_html}{byline}{tldr}{series_nav}{toc}{summary}{body}"
-            f"{checklist}{faq_html}{freshness}{disclaimer}{series_nav}{internal}{jsonld}")
+            f"{checklist}{faq_html}{freshness}{invest_risk}{disclaimer}{series_nav}{internal}{jsonld}")
 
 
 def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
