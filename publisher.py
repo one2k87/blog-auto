@@ -124,14 +124,60 @@ def publish_to_wordpress(article, wp_cfg):
     elif wp_cfg.get("category_id"):
         payload["categories"] = [wp_cfg["category_id"]]
 
+    # Rank Math: 포커스 키프레이즈·메타설명 자동 기입(워드프레스에 mu-plugin 등록 필요)
+    rm = {}
+    if article.get("focus_keyword"):
+        rm["rank_math_focus_keyword"] = article["focus_keyword"]
+    if article.get("meta"):
+        rm["rank_math_description"] = article["meta"]
+    if rm:
+        payload["meta"] = rm
+
     try:
         r = requests.post(f"{base_url}/wp-json/wp/v2/posts",
                           json=payload, headers=headers, timeout=30)
         if r.status_code in (200, 201):
             data = r.json()
+            article["post_id"] = data.get("id")     # 나중에 '최신글 링크' 배너용
             print(f"[wp] 게시 성공({payload['status']}): {data.get('link')}")
             return data.get("link")
         print(f"[wp] 게시 실패 {r.status_code}: {r.text[:300]}")
     except Exception as e:
         print(f"[wp] 게시 예외: {e}")
     return None
+
+
+_BANNER_MARK = "data-updatelink"
+
+
+def add_update_banner(wp_cfg, post_id, new_url, new_title):
+    """예전 글(post_id) 상단에 '최신 업데이트 글' 배너를 추가(중복 시 건너뜀).
+    반환: True(추가/이미 있음) / False(실패)."""
+    if not post_id or not new_url:
+        return False
+    base_url = wp_cfg["site_url"].rstrip("/")
+    headers = _auth_header(wp_cfg["username"], wp_cfg["app_password"])
+    headers["Content-Type"] = "application/json"
+    try:
+        g = requests.get(f"{base_url}/wp-json/wp/v2/posts/{post_id}?context=edit",
+                         headers=headers, timeout=30)
+        if g.status_code != 200:
+            print(f"[wp] 기존글 조회 실패 {g.status_code}")
+            return False
+        cur = g.json().get("content", {}).get("raw", "") or ""
+        if _BANNER_MARK in cur:
+            return True   # 이미 배너 있음
+        title = (new_title or "최신 글").replace("<", "").replace(">", "")
+        banner = (f'<div {_BANNER_MARK}="1" style="margin:0 0 16px;padding:12px 14px;'
+                  f'border:1px solid #7c5cff;border-radius:10px;background:#f6f4ff;font-size:14px">'
+                  f'🔄 <b>더 최신 정보</b>가 있습니다 → '
+                  f'<a href="{new_url}"><b>{title}</b></a></div>')
+        p = requests.post(f"{base_url}/wp-json/wp/v2/posts/{post_id}",
+                          json={"content": banner + cur}, headers=headers, timeout=30)
+        if p.status_code in (200, 201):
+            print(f"[wp] 예전글 #{post_id}에 최신글 링크 배너 추가")
+            return True
+        print(f"[wp] 배너 추가 실패 {p.status_code}: {p.text[:200]}")
+    except Exception as e:
+        print(f"[wp] 배너 예외: {e}")
+    return False
