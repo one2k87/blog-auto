@@ -22,6 +22,10 @@ on:
         description: "검색량 우선 비율 0~100(앱 슬라이더)"
         default: ""
         required: false
+      strength:
+        description: "안전/품질 강도: 느슨 | 표준 | 엄격 (앱 설정에서 전달)"
+        default: ""
+        required: false
 
 permissions:
   contents: write   # 결과 latest.json 을 저장소에 커밋하기 위함
@@ -80,6 +84,15 @@ jobs:
           WP_USER: ${{ secrets.WP_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_STATUS: ${{ secrets.WP_STATUS }}
+          SAFETY_STRENGTH: ${{ github.event.inputs.strength != '' && github.event.inputs.strength || secrets.SAFETY_STRENGTH }}
+          FORCE_DRAFT: ${{ secrets.FORCE_DRAFT }}
+          QUALITY_MIN_CHARS: ${{ secrets.QUALITY_MIN_CHARS }}
+          QUALITY_MIN_H2: ${{ secrets.QUALITY_MIN_H2 }}
+          QUALITY_MAX_DENSITY: ${{ secrets.QUALITY_MAX_DENSITY }}
+          QUALITY_MAX_SIMILARITY: ${{ secrets.QUALITY_MAX_SIMILARITY }}
+          VERIFY_ACCURACY: ${{ secrets.VERIFY_ACCURACY }}
+          RELINK_OLD: ${{ secrets.RELINK_OLD }}
+          BLOCKLIST_EXTRA: ${{ secrets.BLOCKLIST_EXTRA }}
         run: python build_config.py
 
       - name: 블로그 생성 실행
