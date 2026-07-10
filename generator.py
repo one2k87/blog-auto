@@ -110,6 +110,15 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads, competi
 - 정확한 '일자(며칠)'는 확실히 아는 경우에만 표기한다. 확실치 않으면 지어내지 말고 '{today.month}월 중', '하반기', '연내' 등 범위로만.
 - 제도 시행일·신청 마감일 등 바뀔 수 있는 날짜를 단정하지 말고, "공식 발표 기준 확인 필요"처럼 여지를 둔다.
 
+[최신성·정확성 규칙 — 매우 중요]
+- 모든 내용은 **{today.year}년 {today.month}월 기준**으로 쓴다. 과거 연도의 정보를 '현재/올해/최신'인 것처럼 쓰지 말 것.
+- 금액·한도·금리·세율·순위·요금·가격 등 시간에 따라 바뀌는 수치에는 반드시 **'{today.year}년 기준'** 또는 '○○년 기준'처럼 기준 시점을 함께 적는다.
+- 제도·지원금·이벤트가 **지금도 진행 중인지 / 종료됐는지 / 예정인지**를 분명히 구분해 표현한다.
+  (예: "2024년 한시 지원으로 현재는 종료" / "{today.year}년 현재 신청 접수 중" / "{today.month+1 if today.month<12 else 1}월 시행 예정")
+- 확실하지 않거나 바뀌었을 수 있는 정보는 단정하지 말고 "{today.year}년 {today.month}월 기준이며, 신청 전 공식 사이트에서 최신 내용을 확인하세요"처럼 검증 안내를 붙인다.
+- 이미 지난 시점의 마감·행사(예: 과거 신청 기간)를 '아직 가능'한 것처럼 쓰지 말 것.
+- 연도를 본문에 쓸 때는 반드시 그 연도가 '언제 기준'인지 드러나게 쓴다(맥락 없는 옛 연도 단독 표기 금지).
+
 [애드센스 실전 전략 5가지 — 자료 기준 그대로 반영]
 ① 클릭률 구조: 독자는 정독하지 않고 훑어본다. 이미지를 먼저 보여주고 그 아래(정보가 끝나는 문단 뒤)에
    광고가 오게 설계. 광고 근처엔 정책 위반 없는 '무의식 유도' 문장을 둔다
@@ -146,6 +155,13 @@ def _article_prompt(keyword, kind, category, links, related, insert_ads, competi
 9. tldr: 글 맨 위에 넣을 '핵심 요약' 2~3개(각 한 문장, 결론부터).
 10. checklist: 글 끝에 넣을 '실행 체크리스트' 3~5개(독자가 바로 할 행동).
 11. 총 900~1500자 분량. 광고 클릭을 직접 유도하는 문구 금지.
+
+[독창성 강화 — 애드센스 '대량 생성·저품질' 위험 회피]
+- 이 글만의 '고유한 각도'를 하나 정해 일관되게 밀고 간다(특정 대상·상황·비교 관점 등).
+- 구체적인 숫자·조건·예시를 반드시 포함한다(한도·금리·기간·자격요건·실제 상황 예시 등). 두루뭉술한 일반론 금지.
+- 다음 같은 '속 빈 상투어'는 쓰지 말 것: "일반적으로", "중요합니다", "잘 알려져 있듯이", "다양한 방법이 있습니다", "결론적으로 매우 중요".
+- 다른 글을 복제한 듯한 문장·구성을 피하고, 실제 경험담·현실적 팁을 회화체로 녹인다.
+- 사실은 단정하지 말고 "공식 기준 확인 필요"처럼 검증 여지를 남긴다(정확성·신뢰성 E-E-A-T).
 
 참고: 같은 카테고리의 다른 글 제목(내부링크로 이어질 수 있음, 참고만):
 {rel_lines}
@@ -344,6 +360,16 @@ def _byline_html(author):
             f'✍️ {a} · 최종 업데이트 {d.year}년 {d.month}월 {d.day}일</p>')
 
 
+def _freshness_html():
+    """정보 기준일 안내(최신성 신뢰 신호). 본문 하단에 배치."""
+    from datetime import date
+    d = date.today()
+    return ('<p class="freshness" style="margin-top:16px;padding:10px 14px;border-left:3px solid #7c5cff;'
+            'background:#f6f4ff;color:#5b53a8;font-size:13px;line-height:1.6">'
+            f'🗓️ <b>정보 기준일: {d.year}년 {d.month}월</b> · 제도·금액·한도·순위 등은 시점에 따라 바뀔 수 있습니다. '
+            '신청·이용 전 반드시 공식 사이트에서 최신 내용을 확인하세요.</p>')
+
+
 def _build_jsonld(title, meta, faqs, author="편집부", lang="ko"):
     from datetime import date
     iso = date.today().isoformat()
@@ -375,12 +401,13 @@ def _assemble(data, related, blog_url, insert_ads, resolver=None, series_nav="",
     checklist = _checklist_html(data.get("checklist", []))  # 실행 체크리스트
     faq_html = _build_faq_html(data.get("faqs", []))
     disclaimer = _disclaimer_html(category)             # 면책 고지(YMYL)
+    freshness = _freshness_html()                        # 정보 기준일(최신성 안내)
     internal = _build_internal_links(related, blog_url)
     jsonld = _build_jsonld(data.get("title", ""), data.get("meta", ""), data.get("faqs", []), author)
     # 순서: 후킹 → 작성정보 → 핵심요약 → (시리즈 내비) → 목차 → 요약표 → 본문 →
-    #        실행 체크리스트 → FAQ → 면책 → (시리즈 내비) → 내부링크 → 구조화데이터
+    #        실행 체크리스트 → FAQ → 정보기준일 → 면책 → (시리즈 내비) → 내부링크 → 구조화데이터
     return (f"{hook_html}{byline}{tldr}{series_nav}{toc}{summary}{body}"
-            f"{checklist}{faq_html}{disclaimer}{series_nav}{internal}{jsonld}")
+            f"{checklist}{faq_html}{freshness}{disclaimer}{series_nav}{internal}{jsonld}")
 
 
 def _gen_one(keyword, kind, llm_cfg, category, links, related, blog_url,
