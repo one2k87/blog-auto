@@ -23,9 +23,11 @@ import random
 import topics
 import metrics
 import images
+import quality
+import accuracy
 from llm import chat
 from generator import generate_article, generate_series
-from publisher import publish_to_wordpress, upload_media
+from publisher import publish_to_wordpress, upload_media, add_update_banner
 from sheets import log_rows
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -81,6 +83,12 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
     raw = chat(topics.build_topic_prompt(cat["name"], cat["desc"], lane, pool, exclude=exclude),
                cfg["llm"], max_tokens=900, temperature=0.9)
     cand = topics.parse_topics(raw, pool)
+    # 금지·위험 주제 필터(성인/도박/과장의료/저작권 등 자동 제외)
+    extra_block = (cfg.get("safety", {}) or {}).get("blocklist_extra", [])
+    before = len(cand)
+    cand = [c for c in cand if not topics.is_blocked(c["keyword"], extra_block)]
+    if len(cand) < before:
+        print(f"  · 금지·위험 주제 {before - len(cand)}개 제외")
 
     # 지속 판별(저경쟁 vs 시즌). 속도 위해 perf.classify=false 면 건너뜀
     # (이미 lane별 프롬프트로 생성했으므로 끄더라도 분류 자체는 유지됨)
@@ -295,19 +303,77 @@ def _run_category(cfg, cat, hist, auto_publish, img_budget=None):
         for job in jobs:
             generated += gen_job(job)
 
+    # 품질 게이트: 분량·구조·키워드 스터핑·중복 검사 (같은 실행 글끼리 유사도 비교)
+    safety = cfg.get("safety", {}) or {}
+    force_draft = safety.get("force_draft", True)
+    for i, a in enumerate(generated):
+        others = [b["html"] for j, b in enumerate(generated) if j != i]
+        ok, reason = quality.check(a, others, safety)
+        a["quality"] = "통과" if ok else "보류"
+        a["quality_reason"] = reason
+        # 최신성·정확성 검증(연도/진행상태/불확실 주장) — strict면 보류로 승격
+        try:
+            hold, summ = accuracy.check(a, chat, cfg.get("llm", {}), safety)
+            a["accuracy_summary"] = summ
+            if hold and a["quality"] == "통과":
+                a["quality"] = "보류"
+                a["quality_reason"] = (a.get("quality_reason") or "") + ("; " if a.get("quality_reason") else "") + "최신성 문제(" + summ + ")"
+        except Exception as e:
+            print(f"  · 정확도 검증 건너뜀: {e}")
+
     out = []
     for a in generated:
-        if auto_publish:
-            url = publish_to_wordpress(a, wp_cfg)
-            a["status"] = "게시됨" if url else "게시실패"
+        if auto_publish and a["quality"] == "통과":
+            # 초안 강제: 사람이 검토 후 발행(대량 자동 발행 방지)
+            wp = dict(wp_cfg, status="draft") if force_draft else wp_cfg
+            url = publish_to_wordpress(a, wp)
+            a["status"] = ("초안저장됨" if force_draft else "게시됨") if url else "게시실패"
             a["post_url"] = url or ""
+        elif auto_publish and a["quality"] == "보류":
+            a["status"] = "품질보류"      # 발행 안 함(검토 필요)
+            a["post_url"] = ""
+            print(f"  · 품질보류(발행 제외): {a['keyword']} — {a['quality_reason']}")
         else:
             a["status"] = "복붙대기"
             a["post_url"] = ""
         a["copy_file"] = save_copy_html(a)
         out.append(a)
-    print(f"  → [{name}] 슬롯 {sum(slot_count.values())}건 · 글 {len(out)}편")
+    print(f"  → [{name}] 슬롯 {sum(slot_count.values())}건 · 글 {len(out)}편"
+          f"(품질보류 {sum(1 for a in out if a.get('quality')=='보류')}편)")
     return out
+
+
+def _kw_set(s):
+    import re as _re
+    return set(w for w in _re.findall(r"[가-힣A-Za-z0-9]+", str(s or "")) if len(w) > 1)
+
+
+def _relink_old_posts(new_articles, hist, wp_cfg):
+    """이번에 새로 쓴 글과 '같은 주제'인 과거 발행글을 찾아, 옛 글 상단에 최신글 링크 배너를 단다."""
+    olds = [h for h in hist.get("articles", []) if h.get("post_id") and h.get("url")]
+    if not olds:
+        return
+    done = 0
+    for a in new_articles:
+        if not a.get("post_url") or not a.get("post_id"):
+            continue
+        ka = _kw_set(a.get("keyword", ""))
+        if not ka:
+            continue
+        for h in olds:
+            if h.get("category") != a.get("category"):
+                continue
+            kb = _kw_set(h.get("keyword", ""))
+            if not kb:
+                continue
+            sim = len(ka & kb) / len(ka | kb)
+            # 주제가 충분히 겹치고(70%+), 서로 다른 글일 때만
+            if sim >= 0.7 and h.get("post_id") != a.get("post_id"):
+                if add_update_banner(wp_cfg, h["post_id"], a["post_url"], a["title"]):
+                    done += 1
+                break
+    if done:
+        print(f"  · 예전글 {done}건에 최신글 링크 배너 추가")
 
 
 def run():
@@ -351,10 +417,15 @@ def run():
             print(f"[오류] '{cat['name']}' 카테고리 생성 실패(건너뜀): {e}")
             traceback.print_exc()
 
+    # 예전글 → 최신글 링크: 이번에 발행한 글이 과거 글을 대체하면 옛 글 상단에 배너 추가
+    if cfg.get("safety", {}).get("relink_old") and auto_publish:
+        _relink_old_posts(all_articles, hist, wp_cfg)
+
     today = datetime.now().strftime("%Y-%m-%d")
     for a in all_articles:
         hist["articles"].append({
             "title": a["title"], "slug": a.get("slug", ""), "url": a.get("post_url", ""),
+            "post_id": a.get("post_id"),
             "kind": a["kind"], "keyword": a["keyword"], "category": a.get("category", ""),
             "date": today, "series_id": a.get("series_id", ""),
         })
