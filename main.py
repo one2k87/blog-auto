@@ -83,12 +83,17 @@ def collect_lane(cfg, cat, lane, n_slots, exclude):
     raw = chat(topics.build_topic_prompt(cat["name"], cat["desc"], lane, pool, exclude=exclude),
                cfg["llm"], max_tokens=900, temperature=0.9)
     cand = topics.parse_topics(raw, pool)
-    # 금지·위험 주제 필터(성인/도박/과장의료/저작권 등 자동 제외)
+    # 금지·위험 주제 필터(성인/도박/과장의료/저작권/전쟁 등 자동 제외)
     extra_block = (cfg.get("safety", {}) or {}).get("blocklist_extra", [])
     before = len(cand)
     cand = [c for c in cand if not topics.is_blocked(c["keyword"], extra_block)]
     if len(cand) < before:
         print(f"  · 금지·위험 주제 {before - len(cand)}개 제외")
+    # 일반인이 클릭 안 하는 기업·전문가·B2B 주제 제거(안전망)
+    before = len(cand)
+    cand = [c for c in cand if not topics.is_corporate(c["keyword"])]
+    if len(cand) < before:
+        print(f"  · 기업·전문가용 주제 {before - len(cand)}개 제외(일반인 관점 유지)")
 
     # 지속 판별(저경쟁 vs 시즌). 속도 위해 perf.classify=false 면 건너뜀
     # (이미 lane별 프롬프트로 생성했으므로 끄더라도 분류 자체는 유지됨)
