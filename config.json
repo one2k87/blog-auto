@@ -68,8 +68,10 @@
     "username": "your_wp_id",
     "app_password": "abcd efgh ijkl mnop qrst uvwx",
     "status": "draft",
-    "category_id": null
+    "category_id": null,
+    "indexnow_key": ""
   },
+  "_indexnow_설명": "네이버·빙 자동 즉시 등록 키(IndexNow). 아무 영숫자 32자 정도. 사이트 루트에 '<키>.txt' 파일(내용=키)을 올려야 작동. 구글은 서치콘솔+사이트맵으로 별도 등록",
 
   "sheets": { "enabled": false, "service_account_file": "service_account.json", "spreadsheet_id": "" }
 }
