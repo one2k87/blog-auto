@@ -205,7 +205,7 @@
 <!-- 설정 시트 -->
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet" id="sheet">
-  <h2>⚙️ 설정 <span style="font-size:11px;color:var(--muted);font-weight:400">버전 v9 · 강도조절 · 최신성검증</span></h2>
+  <h2>⚙️ 설정 <span style="font-size:11px;color:var(--muted);font-weight:400">버전 v10 · 검색엔진 자동등록</span></h2>
 
   <div class="field">
     <label>현재 플랜</label>
@@ -335,6 +335,36 @@
     </select>
   </div>
   <div class="hint">입력값은 이 기기에만 저장됩니다(localStorage). 공용 기기에서는 사용에 주의하세요.</div>
+
+  <div class="divider"></div>
+  <h2 style="font-size:14px">🔎 검색엔진 등록 (검색 노출)</h2>
+  <div class="field">
+    <div class="hint" style="margin-bottom:8px">
+      <b>네이버·빙</b>은 글을 발행하면 <b>자동으로 즉시 등록</b>됩니다(IndexNow, 아래 키 설정 시).<br>
+      <b>구글·다음</b>은 즉시 API가 없어 <b>사이트맵을 한 번만 등록</b>하면 이후 새 글이 자동 수집됩니다.
+    </div>
+    <label>내 사이트맵 주소 (한 번 복사해서 4곳에 제출)</label>
+    <div class="row" style="gap:6px">
+      <input id="cfgSitemap" readonly style="flex:1" placeholder="사이트 주소 입력 시 자동 생성">
+      <button class="btn sm" id="copySitemap">복사</button>
+    </div>
+    <div class="hint">Rank Math 기본 사이트맵. 사이트 주소를 넣으면 자동으로 채워집니다.</div>
+    <div class="actions" style="margin-top:10px;flex-wrap:wrap;gap:6px">
+      <a class="btn sm" href="https://search.google.com/search-console" target="_blank" rel="noopener">구글 서치콘솔</a>
+      <a class="btn sm" href="https://searchadvisor.naver.com" target="_blank" rel="noopener">네이버 서치어드바이저</a>
+      <a class="btn sm" href="https://webmaster.daum.net" target="_blank" rel="noopener">다음 웹마스터도구</a>
+      <a class="btn sm" href="https://www.bing.com/webmasters" target="_blank" rel="noopener">빙 웹마스터</a>
+    </div>
+    <div class="hint" style="margin-top:8px">각 사이트에서 ① 소유 확인 → ② 위 사이트맵 주소 제출. 한 번만 하면 됩니다.
+      (다음: 수집요청 → 사이트맵 등록)</div>
+  </div>
+  <div class="field">
+    <label>IndexNow 키 (네이버·빙 자동 등록용)</label>
+    <input id="cfgIndexnow" placeholder="영숫자 32자 정도 (예: a1b2c3...)" autocapitalize="off">
+    <div class="hint">① 이 키를 GitHub Secret <b>INDEXNOW_KEY</b> 에도 넣고,
+      ② 사이트 루트에 <b>[키].txt</b> 파일(내용=키)을 올리면 발행 시 네이버·빙에 자동 등록됩니다.
+      비워두면 이 기능만 꺼집니다(다른 기능엔 영향 없음).</div>
+  </div>
 
   <div class="divider"></div>
   <div class="field">
@@ -908,6 +938,8 @@ function openSheet(){
   document.getElementById("cfgUser").value=CFG.user||"";
   document.getElementById("cfgPass").value=CFG.pass||"";
   document.getElementById("cfgStatus").value=CFG.status||"draft";
+  document.getElementById("cfgIndexnow").value=(CFG.safety&&CFG.safety.indexnow_key)||"";
+  fillSitemap(CFG.site||"");
   document.getElementById("sheetBg").classList.add("open");
   document.getElementById("sheet").classList.add("open");}
 function closeSheet(){document.getElementById("sheetBg").classList.remove("open");
@@ -955,7 +987,17 @@ document.getElementById("cfgSave").onclick=()=>{
   CFG.user=document.getElementById("cfgUser").value.trim();
   CFG.pass=document.getElementById("cfgPass").value.trim();
   CFG.status=document.getElementById("cfgStatus").value;
+  CFG.safety=Object.assign({}, CFG.safety, {indexnow_key:document.getElementById("cfgIndexnow").value.trim()});
   saveCfg();closeSheet();toast("저장됨 ✓");loadData();};
+function fillSitemap(site){
+  const el=document.getElementById("cfgSitemap"); if(!el)return;
+  el.value = site ? (site.replace(/\/+$/,"")+"/sitemap_index.xml") : "";
+}
+document.getElementById("cfgSite").addEventListener("input",e=>fillSitemap(e.target.value.trim()));
+document.getElementById("copySitemap").onclick=()=>{
+  const v=document.getElementById("cfgSitemap").value;
+  if(v) clip(v,"사이트맵 주소 복사됨 ✓"); else toast("먼저 사이트 주소를 입력하세요",1);
+};
 document.getElementById("reload").onclick=()=>loadData(true);
 
 // ▶ 폰에서 워크플로 실행 + 진행률 링 + 완료 시 자동 새로고침
