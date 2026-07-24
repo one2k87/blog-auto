@@ -129,6 +129,7 @@ cfg = {
         "username": envs("WP_USER", ""),
         "app_password": envs("WP_APP_PASSWORD", ""),
         "status": envs("WP_STATUS", "draft"),
+        "indexnow_key": envs("INDEXNOW_KEY", ""),   # 네이버·빙 자동 등록 키
     },
     "sheets": {"enabled": False},
     "perf": {
