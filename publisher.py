@@ -6,12 +6,50 @@ status: "publish"(즉시 게시) 또는 "draft"(임시저장, 검토 후 발행)
 """
 
 import base64
+from urllib.parse import urlparse
 import requests
 
 
 def _auth_header(user, app_password):
     token = base64.b64encode(f"{user}:{app_password}".encode()).decode()
     return {"Authorization": f"Basic {token}"}
+
+
+# IndexNow 프로토콜을 지원하는 검색엔진(하나에 보내면 참여 엔진끼리 공유됨)
+# 네이버·빙(마이크로소프트)·Yandex 등이 지원. ※ 구글은 IndexNow 미지원(서치콘솔 사이트맵으로 수집).
+_INDEXNOW_ENDPOINTS = [
+    "https://searchadvisor.naver.com/indexnow",   # 네이버
+    "https://www.bing.com/indexnow",              # 빙
+    "https://api.indexnow.org/indexnow",          # 공용(참여 엔진 전파)
+]
+
+
+def submit_indexnow(urls, key, site_url):
+    """
+    새 글 URL을 네이버·빙 등에 '즉시 등록 요청'(IndexNow).
+    사전 준비(1회): 사이트 루트에 '<key>.txt' 파일을 만들고 내용에 key를 넣어야 함
+      예) https://내블로그.com/<key>.txt  → 파일 내용: <key>
+    key 없거나 URL 없으면 조용히 건너뜀.
+    """
+    urls = [u for u in (urls or []) if u]
+    if not key or not urls:
+        return False
+    host = urlparse(site_url).netloc
+    key_loc = f"{site_url.rstrip('/')}/{key}.txt"
+    payload = {"host": host, "key": key, "keyLocation": key_loc, "urlList": urls}
+    ok = False
+    for ep in _INDEXNOW_ENDPOINTS:
+        try:
+            r = requests.post(ep, json=payload, timeout=15,
+                              headers={"Content-Type": "application/json; charset=utf-8"})
+            if r.status_code in (200, 202):
+                print(f"[indexnow] 등록 요청 성공 → {ep} ({len(urls)}개)")
+                ok = True
+            else:
+                print(f"[indexnow] {ep} 응답 {r.status_code}: {r.text[:120]}")
+        except Exception as e:
+            print(f"[indexnow] {ep} 예외(무시): {e}")
+    return ok
 
 
 def upload_media(image_path, wp_cfg, alt=""):
