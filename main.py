@@ -27,7 +27,7 @@ import quality
 import accuracy
 from llm import chat
 from generator import generate_article, generate_series
-from publisher import publish_to_wordpress, upload_media, add_update_banner
+from publisher import publish_to_wordpress, upload_media, add_update_banner, submit_indexnow
 from sheets import log_rows
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -436,6 +436,16 @@ def run():
         })
     save_history(hist)
     log_rows(all_articles, cfg.get("sheets"))
+
+    # 네이버·빙에 새 글 즉시 등록(IndexNow). 실제 '게시됨'(공개) 글만, 키가 있을 때만.
+    inkey = wp_cfg.get("indexnow_key")
+    if inkey:
+        pub_urls = [a.get("post_url") for a in all_articles
+                    if a.get("post_url") and a.get("status") == "게시됨"]
+        if pub_urls:
+            submit_indexnow(pub_urls, inkey, wp_cfg.get("site_url", ""))
+        else:
+            print("  · IndexNow: 공개 게시된 글이 없어 건너뜀(초안은 색인 대상 아님)")
 
     # 카테고리별 집계
     from collections import Counter
