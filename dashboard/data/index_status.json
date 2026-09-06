@@ -1,8 +1,8 @@
 {
- "updated_at": "2026-09-05T23:19:34",
+ "updated_at": "2026-09-06T01:02:49",
  "site": "https://wontheland.com",
  "checked": 30,
- "indexed": 29,
+ "indexed": 28,
  "ghosts": [
   "https://wontheland.com/청년-구직활동수당-이행보고서-작성-방법-반드시-알/",
   "https://wontheland.com/청년-월세-한시-특별지원-소득재산-재조사-신청-꼭-알/",
@@ -13,7 +13,7 @@
  ],
  "posts_diag": {
   "http": 200,
-  "body_head": "[{\"modified\":\"2026-09-05T09:41:24\",\"link\":\"https:\\/\\/wontheland.com\\/%eb%93%9c%eb%a0%88%ec%8a%a4%eb%a3%b8-%eb%b6%99%eb%b"
+  "body_head": "[{\"modified\":\"2026-09-06T00:57:58\",\"link\":\"https:\\/\\/wontheland.com\\/old-bathroom-tile-overlay-material\\/\"},{\"modified\":"
  },
  "posts_n": 30,
  "results": [
@@ -22,6 +22,12 @@
    "verdict": "PASS",
    "state": "Submitted and indexed",
    "lastCrawl": "2026-08-31"
+  },
+  {
+   "url": "https://wontheland.com/old-bathroom-tile-overlay-material/",
+   "verdict": "NEUTRAL",
+   "state": "URL is unknown to Google",
+   "lastCrawl": ""
   },
   {
    "url": "https://wontheland.com/드레스룸-붙박이장-도어-수평-조정용-숨은-경첩-전후/",
@@ -190,12 +196,6 @@
    "verdict": "PASS",
    "state": "Submitted and indexed",
    "lastCrawl": "2026-09-01"
-  },
-  {
-   "url": "https://wontheland.com/옥상-난간대-하부-콘크리트-접합부-무수축-시멘트-메/",
-   "verdict": "PASS",
-   "state": "Submitted and indexed",
-   "lastCrawl": "2026-09-03"
   }
  ]
 }
