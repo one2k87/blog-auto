@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-09-06T01:02:49",
+ "updated_at": "2026-09-06T23:11:18",
  "site": "https://wontheland.com",
  "checked": 30,
  "indexed": 28,
@@ -26,7 +26,7 @@
   {
    "url": "https://wontheland.com/old-bathroom-tile-overlay-material/",
    "verdict": "NEUTRAL",
-   "state": "URL is unknown to Google",
+   "state": "Discovered - currently not indexed",
    "lastCrawl": ""
   },
   {
@@ -105,7 +105,7 @@
    "url": "https://wontheland.com/지하실-바닥-습기-배출용-미세-배수-라인-트렌치-가공/",
    "verdict": "PASS",
    "state": "Submitted and indexed",
-   "lastCrawl": "2026-08-31"
+   "lastCrawl": "2026-09-06"
   },
   {
    "url": "https://wontheland.com/옥상-파라펫-상부-알루미늄-두겁-시공-시-이음새-열팽/",
@@ -165,7 +165,7 @@
    "url": "https://wontheland.com/다락방-천장-매입형-원형-점검구-타공-시-내부-경량철/",
    "verdict": "PASS",
    "state": "Submitted and indexed",
-   "lastCrawl": "2026-07-26"
+   "lastCrawl": "2026-09-06"
   },
   {
    "url": "https://wontheland.com/드레스룸-의류-수납용-메쉬-셔츠렉-레일-프레임-좌우/",
@@ -177,7 +177,7 @@
    "url": "https://wontheland.com/보일러실-난방-배관-누수-부위-컷터-절단-후-엑셀-xl-커/",
    "verdict": "PASS",
    "state": "Submitted and indexed",
-   "lastCrawl": "2026-07-25"
+   "lastCrawl": "2026-09-06"
   },
   {
    "url": "https://wontheland.com/탕비실-전자레인지-수납장-후면-콘센트-발열-화재-차/",
